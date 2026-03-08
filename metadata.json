@@ -1,0 +1,5 @@
+{
+  "name": "IELTS Speaking Assessor",
+  "description": "Professional IELTS Speaking assessment tool that provides band scores, feedback, and sample responses based on audio input and questions.",
+  "requestFramePermissions": ["microphone"]
+}
