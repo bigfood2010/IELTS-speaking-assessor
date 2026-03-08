@@ -76,11 +76,10 @@ Then generate an assessment with estimated band scores for the IELTS Speaking Pa
 4. Pronunciation
 
 For each category:
-- Provide brief and concise feedback in bullet points.
-- Use varied bullet symbols for each point (e.g., ➢, ✦, •, ▪, ◈, ▷).
-- Each bullet point MUST include an English version followed by its Vietnamese translation.
-- The Vietnamese translation MUST be preceded by the "=" symbol (e.g., "English feedback = Phản hồi tiếng Việt").
-- Suggest brief improvements in bullet points, also with Vietnamese translations preceded by "=".
+- Provide brief and concise feedback in a clean list format. 
+- Do NOT use decorative symbols like ✦, ➤, ▪, or •. 
+- Each point MUST include an English version followed by its Vietnamese translation on a NEW LINE.
+- Suggest brief improvements in a clear list format, also with Vietnamese translations on a new line.
 - In the improvement section, MUST provide at least one prestigious free website, app, or source (e.g., BBC Learning English, British Council, IELTS Simon, Cambridge Dictionary, etc.) specifically relevant to that category for self-practice.
 
 ${getQuestionContext(questions, part)}

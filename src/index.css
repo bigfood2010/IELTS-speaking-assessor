@@ -1,24 +1,33 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500&display=swap');
 @import "tailwindcss";
 
 @theme {
-  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: "Outfit", ui-sans-serif, system-ui, sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
   
-  --color-heritage-red: #A82323;
-  --color-heritage-cream: #FEFFD3;
-  --color-heritage-sage: #BCD9A2;
-  --color-heritage-forest: #6D9E51;
+  /* Vibrant Pro Studio Palette */
+  --color-vibrant-rose: #F26076;
+  --color-vibrant-coral: #FF9760;
+  --color-vibrant-gold: #FFD150;
+  --color-vibrant-emerald: #458B73;
 
-  /* 2025 Trending Luxe Palette */
-  --color-luxe-espresso: #121212;
-  --color-luxe-cobalt: #2D5BFF;
-  --color-luxe-sand: #F4F1EA;
-  --color-luxe-slate: #1E293B;
+  /* Neutrals + Contrast */
+  --color-studio-ink: #0F172A;
+  --color-studio-paper: #F8FAFC;
+  --color-studio-silver: #E2E8F0;
+
+  /* Legacy overrides for transition */
+  --color-heritage-forest: #458B73;
+  --color-heritage-sage: #FFD150;
+  --color-heritage-red: #F26076;
+  --color-heritage-cream: #FF9760;
+
+  --color-luxe-espresso: #0F172A;
+  --color-luxe-cobalt: #F26076;
 }
 
 @layer base {
   body {
-    @apply antialiased bg-white text-zinc-900 leading-relaxed;
+    @apply antialiased bg-studio-paper text-studio-ink leading-relaxed;
   }
 }

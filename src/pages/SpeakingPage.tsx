@@ -6,37 +6,14 @@ import { Link } from 'react-router-dom';
 import { AudioRecorder } from '@/components/molecules/AudioRecorder';
 import { useGeminiKey } from '@/hooks/useGeminiKey';
 import { formatDateTimeForLocale } from '@/lib/pacificTime';
-import { assessSpeaking, GeminiAssessmentError, type AssessmentResult } from '@/services/geminiService';
+import { assessSpeaking, GeminiAssessmentError } from '@/services/geminiService';
 import { saveAssessmentResult } from '@/services/historyService';
 import { useAuth } from '@/store/AuthContext';
+import { usePractice, type AssessmentResult, type PartState } from '@/store/PracticeContext';
 
 type IELTSPart = '1' | '2' | '3';
-
 const PART_OPTIONS: IELTSPart[] = ['1', '2', '3'];
-const CRITERIA_LABELS: Record<string, string> = {
-  fluency: 'Fluency & Coherence',
-  lexical: 'Lexical Resource',
-  grammar: 'Grammatical Range',
-  pronunciation: 'Pronunciation',
-};
 
-interface PartState {
-  questions: string;
-  result: AssessmentResult | null;
-  audioUrl: string | null;
-  base64: string | null;
-  mimeType: string | null;
-}
-
-const INITIAL_PART_STATE: PartState = {
-  questions: '',
-  result: null,
-  audioUrl: null,
-  base64: null,
-  mimeType: null,
-};
-
-const controlSurfaceClass = 'rounded-[2rem] border border-zinc-200/80 bg-white/92 p-6 shadow-[0_20px_40px_rgba(15,23,42,0.06)] backdrop-blur-sm';
 const resultSurfaceClass = 'rounded-[2rem] border border-zinc-200/80 bg-white/96 shadow-[0_20px_48px_rgba(15,23,42,0.08)]';
 
 function getAssessmentErrorTitle(error: Error) {
@@ -58,13 +35,69 @@ function getAssessmentErrorTitle(error: Error) {
   return 'Audio analysis failed';
 }
 
-export default function SpeakingPage() {
-  const [part, setPart] = useState<IELTSPart>('1');
-  const [partStates, setPartStates] = useState<Record<IELTSPart, PartState>>({
-    '1': { ...INITIAL_PART_STATE },
-    '2': { ...INITIAL_PART_STATE },
-    '3': { ...INITIAL_PART_STATE },
+function formatProceduralText(text: string) {
+  if (!text) return text;
+  
+  // Clean decorative symbols and separators
+  let cleaned = text.replace(/[✦➤▪•◈▷➢]/g, '').replace(/\s*=\s*/g, '\n');
+  
+  // Remove Source or Resource part entirely (we render it separately)
+  cleaned = cleaned.replace(/\b(Source|Resource):\s*.*$/gi, '');
+
+  const sections = cleaned.split('\n').map(s => s.trim()).filter(Boolean);
+  const vnRegex = /[àáảãạăằắẳẵặâầấẩẫậèéẻẽẹêềếểễệìíỉĩịòóỏõọôồốổỗộơờớởỡợùúủũụưừứửữựỳýỷỹỵđ]/i;
+
+  let finalLines: string[] = [];
+  
+  sections.forEach(section => {
+    if (section.length > 50 && vnRegex.test(section)) {
+      const sentences = section.split('. ');
+      let currentPart = "";
+      
+      sentences.forEach((sentence, idx) => {
+        const isFirstVN = vnRegex.test(sentence) && !vnRegex.test(currentPart);
+        const cleanSentence = sentence.trim() + (idx < sentences.length - 1 ? '.' : '');
+        
+        if (isFirstVN && currentPart.length > 0) {
+          finalLines.push(currentPart.trim());
+          currentPart = cleanSentence;
+        } else {
+          currentPart += (currentPart ? ' ' : '') + cleanSentence;
+        }
+      });
+      if (currentPart) finalLines.push(currentPart.trim());
+    } else {
+      finalLines.push(section);
+    }
   });
+
+  return finalLines.join('\n');
+}
+
+function extractSource(text: string): string | null {
+  const match = text.match(/\b(Source|Resource):\s*(.*)$/i);
+  return match ? match[2].trim() : null;
+}
+
+const CRITERIA_LABELS: Record<string, string> = {
+  fluency: 'Fluency & Coherence',
+  lexical: 'Lexical Resource',
+  grammar: 'Grammatical Range',
+  pronunciation: 'Pronunciation',
+};
+
+const controlSurfaceClass = 'rounded-[2rem] border border-zinc-200/80 bg-white/92 p-6 shadow-[0_20px_40px_rgba(15,23,42,0.06)] backdrop-blur-sm';
+
+export default function SpeakingPage() {
+  const { 
+    activePart: part, 
+    setActivePart: setPart, 
+    partStates, 
+    updatePartState,
+    clearPartData,
+    clearAllSessionData
+  } = usePractice();
+
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [isGuideOpen, setIsGuideOpen] = useState(false);
 
@@ -72,26 +105,8 @@ export default function SpeakingPage() {
   const { questions, result, audioUrl } = currentState;
 
   const updateCurrentPartState = (updates: Partial<PartState>) => {
-    setPartStates((prev) => ({
-      ...prev,
-      [part]: { ...prev[part], ...updates },
-    }));
+    updatePartState(part, updates);
   };
-
-  const partStatesRef = useRef(partStates);
-  useEffect(() => {
-    partStatesRef.current = partStates;
-  }, [partStates]);
-
-  useEffect(() => {
-    return () => {
-      Object.values(partStatesRef.current).forEach((ps) => {
-        if (ps.audioUrl) {
-          URL.revokeObjectURL(ps.audioUrl);
-        }
-      });
-    };
-  }, []);
 
   const { apiKey } = useGeminiKey();
   const { user } = useAuth();
@@ -146,9 +161,9 @@ export default function SpeakingPage() {
   };
 
   const getScoreColor = (score: number) => {
-    if (score >= 7) return 'border-heritage-sage bg-heritage-sage/10 text-heritage-forest';
-    if (score >= 6) return 'border-zinc-200 bg-zinc-50 text-zinc-700';
-    return 'border-heritage-red/20 bg-heritage-red/5 text-heritage-red';
+    if (score >= 7.5) return 'border-vibrant-emerald bg-vibrant-emerald/5 text-vibrant-emerald';
+    if (score >= 6.5) return 'border-vibrant-gold/30 bg-vibrant-gold/10 text-vibrant-gold';
+    return 'border-vibrant-rose/20 bg-vibrant-rose/5 text-vibrant-rose';
   };
 
   const questionPlaceholder = part === '2'
@@ -160,37 +175,37 @@ export default function SpeakingPage() {
 
   if (!apiKey) {
     return (
-      <div className="max-w-3xl space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+      <div className="max-w-3xl space-y-10 animate-in fade-in slide-in-from-bottom-6 duration-700 font-sans">
         <div className="space-y-4">
-          <span className="inline-flex items-center rounded-full border border-zinc-200 bg-white px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.24em] text-zinc-500 shadow-sm">
+          <span className="inline-flex items-center rounded-full border border-vibrant-emerald/20 bg-vibrant-emerald/5 px-4 py-1.5 text-[11px] font-bold uppercase tracking-[0.24em] text-vibrant-emerald shadow-sm">
             Speaking Studio
           </span>
-          <div className="space-y-3">
-            <h1 className="max-w-2xl text-3xl sm:text-4xl font-semibold tracking-tight text-zinc-950">
-              Prepare, record, and assess your speaking response in one workspace.
+          <div className="space-y-4">
+            <h1 className="max-w-2xl text-4xl sm:text-5xl font-black tracking-tight text-studio-ink">
+              Ready to master <br/>your speaking score?
             </h1>
-            <p className="max-w-2xl text-base leading-7 text-zinc-600">
-              Add your Gemini API key once, then return here to practice with the full IELTS speaking workflow.
+            <p className="max-w-2xl text-lg font-medium leading-relaxed text-zinc-500">
+              Add your Gemini API key once to unlock the full potential of our high-fidelity AI assessment studio.
             </p>
           </div>
         </div>
 
-        <div className="rounded-[2rem] border border-dashed border-zinc-300 bg-white/95 p-10 shadow-[0_18px_40px_rgba(15,23,42,0.06)]">
-          <div className="space-y-6 text-center">
-            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-[1.5rem] bg-zinc-950 text-white shadow-[0_14px_30px_rgba(15,23,42,0.18)]">
-              <Sparkles size={22} />
+        <div className="rounded-[3rem] border-2 border-dashed border-studio-silver bg-white/80 p-14 shadow-2xl backdrop-blur-xl">
+          <div className="space-y-8 text-center">
+            <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-[2.25rem] bg-vibrant-rose text-white shadow-2xl shadow-vibrant-rose/40">
+              <Sparkles size={28} />
             </div>
-            <div className="space-y-2">
-              <h2 className="text-2xl font-semibold tracking-[-0.03em] text-zinc-950">Gemini API key required</h2>
-              <p className="mx-auto max-w-xl text-base leading-7 text-zinc-600">
-                This practice workspace runs on your own Gemini key. Add it in Settings, then come back to start recording and receive detailed band feedback.
+            <div className="space-y-3">
+              <h2 className="text-3xl font-extrabold tracking-tight text-studio-ink">API Key Required</h2>
+              <p className="mx-auto max-w-xl text-lg font-medium text-zinc-500">
+                This studio runs on your own high-speed Gemini key. It takes 30 seconds to set up and provides unlimited deep-dives.
               </p>
             </div>
             <Link
               to="/app/settings"
-              className="inline-flex items-center rounded-full bg-zinc-950 px-6 py-3 text-sm font-semibold text-white shadow-[0_14px_28px_rgba(15,23,42,0.18)] transition-colors hover:bg-zinc-800"
+              className="inline-flex items-center rounded-full bg-vibrant-emerald px-10 py-4 text-lg font-bold text-white shadow-2xl shadow-vibrant-emerald/30 transition-all hover:scale-[1.05] active:scale-[0.98]"
             >
-              Open Settings
+              Configure Studio
             </Link>
           </div>
         </div>
@@ -199,26 +214,42 @@ export default function SpeakingPage() {
   }
 
   return (
-    <div className="relative space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-      <header className="flex flex-col gap-6 md:flex-row md:items-start md:justify-between">
+    <div className="relative space-y-10 animate-in fade-in slide-in-from-bottom-6 duration-700 font-sans pb-20">
+      <header className="flex flex-col gap-8 md:flex-row md:items-start md:justify-between">
         <section className="max-w-4xl space-y-4">
-          <span className="inline-flex items-center rounded-full border border-zinc-200 bg-white px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.24em] text-zinc-500 shadow-sm">
-            Speaking Studio
+          <span className="inline-flex items-center rounded-full border border-vibrant-emerald/20 bg-vibrant-emerald/5 px-4 py-1.5 text-[11px] font-bold uppercase tracking-[0.24em] text-vibrant-emerald">
+            Live Practice
           </span>
           <div className="space-y-1.5">
-            <h1 className="text-3xl sm:text-4xl font-semibold tracking-tight text-zinc-950">
-              Practice Session
+            <h1 className="text-4xl sm:text-5xl font-black tracking-tight text-studio-ink">
+              Expert Session
             </h1>
           </div>
         </section>
 
-        <button
-          onClick={() => setIsGuideOpen(true)}
-          className="inline-flex shrink-0 items-center justify-center gap-2 rounded-full border border-zinc-200 bg-white px-5 py-2.5 text-sm font-semibold text-zinc-700 shadow-sm transition-all hover:border-zinc-300 hover:bg-zinc-50 hover:text-zinc-950"
-        >
-          <HelpCircle size={16} />
-          How to use
-        </button>
+        <div className="flex flex-wrap items-center gap-4">
+          {Object.values(partStates).some(s => s.audioUrl || s.result) && (
+            <button
+              onClick={() => {
+                if (confirm('Clear all unsaved practice data for all parts?')) {
+                  clearAllSessionData();
+                }
+              }}
+              className="inline-flex shrink-0 items-center justify-center gap-2 rounded-full border-2 border-studio-silver bg-white px-6 py-3 text-sm font-bold text-zinc-400 transition-all hover:border-vibrant-rose/30 hover:bg-vibrant-rose/5 hover:text-vibrant-rose"
+            >
+              <X size={18} />
+              Reset All
+            </button>
+          )}
+
+          <button
+            onClick={() => setIsGuideOpen(true)}
+            className="inline-flex shrink-0 items-center justify-center gap-2 rounded-full border-2 border-studio-silver bg-white px-8 py-3 text-sm font-bold text-studio-ink shadow-sm transition-all hover:border-zinc-300 hover:bg-studio-paper"
+          >
+            <HelpCircle size={18} />
+            Studio Guide
+          </button>
+        </div>
       </header>
 
       {/* Guide Modal */}
@@ -230,55 +261,53 @@ export default function SpeakingPage() {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setIsGuideOpen(false)}
-              className="fixed inset-0 z-50 bg-zinc-950/20 backdrop-blur-md"
+              className="fixed inset-0 z-50 bg-studio-ink/20 backdrop-blur-xl"
             />
             <motion.div
-              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              initial={{ opacity: 0, scale: 0.9, y: 30 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              className="fixed inset-x-6 top-[10%] z-50 mx-auto max-w-2xl overflow-hidden rounded-[2.5rem] border border-zinc-200 bg-white shadow-2xl md:top-[15%]"
+              exit={{ opacity: 0, scale: 0.9, y: 30 }}
+              className="fixed inset-x-6 top-[8%] z-50 mx-auto max-w-3xl overflow-hidden rounded-[3rem] border border-studio-silver bg-white shadow-3xl md:top-[12%]"
             >
-              <div className="relative p-8 md:p-12">
+              <div className="relative p-10 md:p-14">
                 <button
                   onClick={() => setIsGuideOpen(false)}
-                  className="absolute right-6 top-6 flex h-10 w-10 items-center justify-center rounded-full border border-zinc-100 bg-white text-zinc-400 transition-colors hover:text-zinc-950 md:right-8 md:top-8"
+                  className="absolute right-8 top-8 flex h-12 w-12 items-center justify-center rounded-2xl border border-studio-silver bg-white text-zinc-400 transition-all hover:text-vibrant-rose hover:border-vibrant-rose/20"
                 >
-                  <X size={20} />
+                  <X size={24} />
                 </button>
 
-                <div className="flex flex-col justify-between gap-10">
-                  <div className="flex items-center justify-between gap-4">
-                    <div>
-                      <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-zinc-500">Assessment Stage</p>
-                      <h3 className="mt-2 text-3xl font-semibold tracking-[-0.04em] text-zinc-950">
-                        Ready when you are
-                      </h3>
-                    </div>
+                <div className="flex flex-col gap-12">
+                  <div className="space-y-4">
+                    <p className="text-[12px] font-black uppercase tracking-[0.3em] text-vibrant-emerald">Pro Workflow</p>
+                    <h3 className="text-4xl font-extrabold tracking-tight text-studio-ink leading-tight">
+                      Master the Studio
+                    </h3>
                   </div>
 
-                  <div className="flex flex-col items-center justify-center text-center">
-                    <div className="mb-6 flex h-24 w-24 items-center justify-center rounded-[2rem] bg-zinc-50 text-zinc-400">
-                      <Mic size={34} />
+                  <div className="flex flex-col items-center justify-center text-center py-6">
+                    <div className="mb-8 flex h-28 w-28 items-center justify-center rounded-[2.5rem] bg-studio-paper text-zinc-300 shadow-inner">
+                      <Mic size={48} strokeWidth={1.5} />
                     </div>
-                    <div className="space-y-3">
-                      <h4 className="text-2xl font-semibold tracking-tight text-zinc-950">
-                        Start a practice response
+                    <div className="space-y-4">
+                      <h4 className="text-2xl font-bold tracking-tight text-studio-ink">
+                        Input → AI → Score
                       </h4>
-                      <p className="mx-auto max-w-xl text-base leading-7 text-zinc-500">
-                        Pick an IELTS part, then record or upload your answer.
+                      <p className="mx-auto max-w-xl text-lg font-medium leading-relaxed text-zinc-500">
+                        Our studio analyzes every phoneme and grammatical structure to provide high-fidelity band estimates.
                       </p>
                     </div>
                   </div>
 
-                  <div className="grid gap-4 md:grid-cols-3">
+                  <div className="grid gap-6 md:grid-cols-3">
                     {[
-                      ['1', 'Choose your part'],
-                      ['2', 'Record or upload'],
-                      ['3', 'Review the score'],
-                    ].map(([step, label]) => (
-                      <div key={step} className="rounded-[1.5rem] border border-zinc-100 bg-zinc-50/50 px-5 py-5 text-left">
-                        <span className="text-[11px] font-semibold uppercase tracking-[0.22em] text-zinc-400">Step {step}</span>
-                        <p className="mt-2 text-sm font-medium text-zinc-900">{label}</p>
+                      ['1', 'vibrant-gold', 'Pick your IELTS part from the selector'],
+                      ['2', 'vibrant-rose', 'Record or upload your audio file'],
+                      ['3', 'vibrant-emerald', 'Receive detailed band feedback'],
+                    ].map(([step, color, label]) => (
+                      <div key={step} className="group rounded-[2rem] border border-studio-silver bg-studio-paper/40 p-6 transition-all hover:bg-white hover:shadow-xl">
+                        <span className={`text-[12px] font-black uppercase tracking-widest text-${color}`}>Phase {step}</span>
+                        <p className="mt-3 text-[15px] font-bold text-studio-ink leading-snug">{label}</p>
                       </div>
                     ))}
                   </div>
@@ -289,57 +318,60 @@ export default function SpeakingPage() {
         )}
       </AnimatePresence>
 
-      <div className="grid gap-8 lg:grid-cols-[24rem_minmax(0,1fr)] xl:grid-cols-[26rem_minmax(0,1fr)]">
-        <div className="space-y-5 xl:sticky xl:top-10 xl:self-start">
-          <fieldset className={controlSurfaceClass}>
-            <legend className="mb-5 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.24em] text-zinc-500">
-              <BookOpen size={14} />
-              IELTS Part
-            </legend>
-            <div className="grid grid-cols-3 gap-2.5">
+      <div className="grid gap-10 lg:grid-cols-[24rem_minmax(0,1fr)] xl:grid-cols-[28rem_minmax(0,1fr)]">
+        <div className="space-y-6 lg:sticky lg:top-10 lg:self-start">
+          <div className="rounded-[2.5rem] border border-studio-silver bg-white/80 p-8 shadow-sm backdrop-blur-md">
+            <div className="mb-6 flex items-center gap-2 text-[11px] font-black uppercase tracking-[0.25em] text-zinc-400">
+              <BookOpen size={16} className="text-vibrant-emerald" />
+              IELTS Session Part
+            </div>
+            <div className="grid grid-cols-3 gap-3">
               {PART_OPTIONS.map((option) => (
                 <button
                   key={option}
                   type="button"
                   onClick={() => setPart(option)}
                   aria-pressed={part === option}
-                  className={`rounded-[1.35rem] border px-3 py-4 text-center text-sm font-semibold transition-all duration-300 ${
+                  className={`relative overflow-hidden rounded-[1.5rem] border-2 px-3 py-6 text-center transition-all duration-500 ${
                     part === option
-                      ? 'border-heritage-forest bg-heritage-forest text-white shadow-[0_12px_24px_rgba(109,158,81,0.25)] ring-1 ring-heritage-sage/50'
-                      : 'border-zinc-200 bg-zinc-50 text-zinc-600 hover:border-zinc-300 hover:bg-white hover:text-zinc-950'
+                      ? 'border-vibrant-emerald bg-vibrant-emerald text-white shadow-xl shadow-vibrant-emerald/20'
+                      : 'border-studio-silver bg-studio-paper/40 text-zinc-400 hover:border-zinc-300 hover:bg-white hover:text-studio-ink'
                   }`}
                 >
-                  <span className="block text-[11px] uppercase tracking-[0.22em] opacity-70">Part</span>
-                  <span className="mt-1 block text-base">{option}</span>
+                  <span className="relative z-10 block text-[10px] font-black uppercase tracking-[0.2em] opacity-80">Part</span>
+                  <span className="relative z-10 mt-1 block text-2xl font-black">{option}</span>
+                  {part === option && (
+                    <motion.div 
+                      layoutId="part-active"
+                      className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent"
+                    />
+                  )}
                 </button>
               ))}
             </div>
-          </fieldset>
+          </div>
 
-          <div className={controlSurfaceClass}>
-            <div className="mb-4 flex items-center justify-between gap-3">
-              <label htmlFor="speaking-question" className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.24em] text-zinc-500">
-                <MessageSquare size={14} />
-                Question / Cue Card
+          <div className="rounded-[2.5rem] border border-studio-silver bg-white/80 p-8 shadow-sm backdrop-blur-md">
+            <div className="mb-5 flex items-center justify-between gap-3">
+              <label htmlFor="speaking-question" className="flex items-center gap-2 text-[11px] font-black uppercase tracking-[0.25em] text-zinc-400">
+                <MessageSquare size={16} className="text-vibrant-gold" />
+                Prompt Focus
               </label>
-              <span className="text-[10px] font-semibold uppercase tracking-[0.22em] text-zinc-400">Optional</span>
+              <span className="rounded-full bg-studio-paper px-2.5 py-1 text-[9px] font-black uppercase tracking-widest text-zinc-400">Optional</span>
             </div>
             <textarea
               id="speaking-question"
               value={questions}
               onChange={(event) => updateCurrentPartState({ questions: event.target.value })}
               placeholder={questionPlaceholder}
-              className="min-h-44 w-full resize-none rounded-[1.5rem] border border-zinc-200 bg-zinc-50 px-4 py-4 text-[0.98rem] leading-7 text-zinc-800 outline-none transition-all placeholder:text-zinc-400 focus:border-zinc-950 focus:bg-white"
+              className="min-h-48 w-full resize-none rounded-[2rem] border-2 border-studio-silver bg-studio-paper/30 px-6 py-6 text-lg font-medium leading-relaxed text-studio-ink outline-none transition-all placeholder:text-zinc-300 focus:border-vibrant-emerald/30 focus:bg-white focus:shadow-inner"
             />
-            <p className="mt-3 text-sm leading-6 text-zinc-500">
-              Leave this blank if you want the AI to generate a suitable IELTS question for the selected part.
-            </p>
           </div>
 
-          <div className={controlSurfaceClass}>
-            <div className="mb-4 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.24em] text-zinc-500">
-              <Mic size={14} />
-              Your Response
+          <div className="rounded-[2.5rem] border border-studio-silver bg-white/80 p-8 shadow-sm backdrop-blur-md">
+            <div className="mb-5 flex items-center gap-2 text-[11px] font-black uppercase tracking-[0.25em] text-zinc-400">
+              <Mic size={16} className="text-vibrant-rose" />
+              Live Input
             </div>
             <AudioRecorder
               onRecordingComplete={handleRecordingComplete}
@@ -351,45 +383,18 @@ export default function SpeakingPage() {
 
           {assessMutation.isError && (
             <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
               role="alert"
-              className="rounded-[1.5rem] border border-red-200 bg-red-50 px-4 py-4 text-sm text-red-700 shadow-sm"
+              className="rounded-[2rem] border-2 border-vibrant-rose/20 bg-vibrant-rose/5 px-6 py-6 text-vibrant-rose shadow-sm"
             >
-              <div className="flex items-start gap-3">
-                <AlertCircle size={18} className="mt-0.5 shrink-0" />
+              <div className="flex items-start gap-4">
+                <AlertCircle size={22} className="mt-1 shrink-0" />
                 <div className="min-w-0 space-y-2">
-                  <p className="font-semibold text-red-800">{getAssessmentErrorTitle(assessmentError)}</p>
-                  <p className="leading-6">{assessmentError?.message || 'Failed to analyze audio. Please try again.'}</p>
-                  {quotaError?.resetAt && (
-                    <p className="text-xs font-medium text-red-700/90">
-                      Next Pacific reset: {formatDateTimeForLocale(quotaError.resetAt)} in your local time.
-                    </p>
-                  )}
-                  {showSettingsShortcut && (
-                    <div className="pt-1">
-                      <Link
-                        to="/app/settings"
-                        className="inline-flex items-center rounded-full border border-red-200 bg-white px-3 py-1.5 text-xs font-semibold text-red-700 transition-colors hover:border-red-300 hover:bg-red-100"
-                      >
-                        Open Settings to update key
-                      </Link>
-                    </div>
-                  )}
+                  <p className="text-lg font-black tracking-tight">{getAssessmentErrorTitle(assessmentError)}</p>
+                  <p className="text-[15px] font-medium leading-relaxed opacity-90">{assessmentError?.message || 'Studio failed to process audio.'}</p>
                 </div>
               </div>
-            </motion.div>
-          )}
-
-          {saveMutation.isError && (
-            <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              role="alert"
-              className="flex items-start gap-3 rounded-[1.5rem] border border-red-200 bg-red-50 px-4 py-4 text-sm text-red-700 shadow-sm"
-            >
-              <AlertCircle size={18} className="mt-0.5 shrink-0" />
-              <p className="leading-6">Failed to save this score. Please try again.</p>
             </motion.div>
           )}
         </div>
@@ -406,95 +411,112 @@ export default function SpeakingPage() {
                 className="space-y-6"
               >
                 {result.suggestedQuestion && (
-                  <div className={`${resultSurfaceClass} relative overflow-hidden border-heritage-sage bg-heritage-cream/40 p-6`}>
+                  <div className="group relative overflow-hidden rounded-[3rem] border-2 border-vibrant-gold/20 bg-vibrant-gold/5 p-8 backdrop-blur-sm transition-all hover:bg-vibrant-gold/10">
                     <button
                       type="button"
                       onClick={() => copyToClipboard(result.suggestedQuestion!, 'suggested')}
-                      className="absolute right-5 top-5 inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/70 bg-white/90 text-zinc-500 shadow-sm transition-colors hover:text-zinc-950"
-                      title="Copy suggested question"
+                      className="absolute right-6 top-6 flex h-12 w-12 items-center justify-center rounded-2xl border-2 border-white bg-white/50 text-vibrant-gold shadow-sm backdrop-blur-md transition-all hover:scale-110 active:scale-90"
+                      title="Copy goal question"
                     >
-                      {copiedId === 'suggested' ? <Check size={15} className="text-heritage-forest" /> : <Copy size={15} />}
+                      {copiedId === 'suggested' ? <Check size={20} className="text-vibrant-emerald" /> : <Copy size={20} />}
                     </button>
-                    <div className="space-y-3 pr-14">
-                      <div className="inline-flex items-center gap-2 rounded-full bg-white/80 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.24em] text-heritage-forest">
-                        <Sparkles size={13} />
-                        AI Suggested {part === '2' ? 'Cue Card' : 'Question'}
+                    <div className="space-y-4 pr-16">
+                      <div className="inline-flex items-center gap-2 rounded-xl bg-vibrant-gold px-4 py-1.5 text-[11px] font-black uppercase tracking-[0.2em] text-white">
+                        <Sparkles size={14} />
+                        Suggested Question
                       </div>
-                      <p className="max-w-3xl text-lg font-medium leading-8 text-zinc-900">
+                      <p className="max-w-3xl text-2xl font-black leading-[2.5rem] tracking-tight text-studio-ink">
                         {result.suggestedQuestion}
                       </p>
                     </div>
                   </div>
                 )}
 
-                <div className={`${resultSurfaceClass} overflow-hidden p-7 lg:p-8`}>
-                  <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
-                    <div className="space-y-4">
-                      <div className="space-y-2">
-                        <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-zinc-500">Estimated Band Score</p>
-                        <div className="flex items-end gap-3">
-                          <span className="text-6xl sm:text-7xl font-semibold leading-none tracking-tight text-zinc-950">
+                <div className="rounded-[3rem] border border-studio-silver bg-white p-10 shadow-xl shadow-black/5">
+                  <div className="grid gap-10 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
+                    <div className="space-y-5">
+                      <div className="space-y-3">
+                        <p className="text-[12px] font-black uppercase tracking-[0.3em] text-zinc-400">Overall Band Score</p>
+                        <div className="flex items-end gap-3 text-studio-ink">
+                          <span className="text-8xl font-black leading-none tracking-tighter">
                             {result.overallBand.toFixed(1)}
                           </span>
-                          <span className="pb-3 text-lg font-medium text-zinc-400">/ 9.0</span>
+                          <span className="pb-4 text-3xl font-black text-zinc-200">/ 9.0</span>
                         </div>
                       </div>
-                      <p className="max-w-xl text-base leading-7 text-zinc-600">
-                        Your feedback is broken down by IELTS criteria so you can see where you already sound strong and where your next gains will come from.
+                      <p className="max-w-xl text-lg font-medium leading-relaxed text-zinc-500">
+                        Detailed analysis based on your fluency, vocabulary, grammar, and pronunciation.
                       </p>
                     </div>
                     <button
                       type="button"
                       onClick={() => saveMutation.mutate()}
                       disabled={saveMutation.isPending || saveMutation.isSuccess}
-                      className="inline-flex items-center justify-center gap-2 rounded-full bg-luxe-espresso px-6 py-3 text-sm font-semibold text-white shadow-[0_14px_28px_rgba(45,91,255,0.15)] ring-1 ring-white/10 transition-colors hover:bg-zinc-900 disabled:cursor-not-allowed disabled:bg-emerald-600 disabled:shadow-none"
+                      className={`group relative inline-flex h-20 w-56 items-center justify-center overflow-hidden rounded-3xl text-lg font-black transition-all hover:scale-105 active:scale-95 ${
+                        saveMutation.isSuccess 
+                          ? 'bg-vibrant-gold text-white shadow-vibrant-gold/30' 
+                          : 'bg-vibrant-rose text-white shadow-xl shadow-vibrant-rose/30'
+                      }`}
                     >
-                      {saveMutation.isSuccess ? <Check size={16} /> : <Save size={16} />}
-                      {saveMutation.isPending ? 'Saving...' : saveMutation.isSuccess ? 'Saved' : 'Save Score'}
+                      <span className="relative z-10 flex items-center gap-3">
+                        {saveMutation.isSuccess ? <CheckCircle2 size={24} /> : <Save size={24} />}
+                        {saveMutation.isPending ? 'SAVING...' : saveMutation.isSuccess ? 'SAVED' : 'SAVE SCORE'}
+                      </span>
+                      <div className="absolute inset-x-0 bottom-0 h-1.5 bg-black/10" />
                     </button>
                   </div>
                 </div>
 
-                <div className={`${resultSurfaceClass} p-7 lg:p-8`}>
-                  <div className="mb-4 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.24em] text-zinc-500">
-                    <Languages size={15} />
-                    Transcript
+                <div className="rounded-[3.5rem] border border-studio-silver bg-white p-10 shadow-xl">
+                  <div className="mb-6 flex items-center gap-2 text-[12px] font-black uppercase tracking-[0.3em] text-zinc-400">
+                    <Languages size={18} className="text-vibrant-emerald" />
+                    Transcription
                   </div>
-                  <div className="rounded-[1.5rem] bg-zinc-50 px-5 py-5 text-[1.1rem] leading-9 text-zinc-900">
+                  <div className="rounded-[2.5rem] bg-studio-paper p-10 text-xl font-bold leading-[2.6rem] tracking-tight text-studio-ink shadow-inner">
                     {result.transcription}
                   </div>
                 </div>
 
-                <div className="grid gap-6 2xl:grid-cols-2">
+                <div className="grid grid-cols-1 gap-8 md:grid-cols-12 items-start">
                   {Object.entries(result.criteria).map(([key, data]) => (
-                    <div key={key} className={`${resultSurfaceClass} p-6`}>
-                      <div className="mb-5 flex items-start justify-between gap-4">
-                        <div className="space-y-1">
-                          <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-zinc-500">Criterion</p>
-                          <h3 className="text-lg font-semibold tracking-[-0.03em] text-zinc-950">
-                            {CRITERIA_LABELS[key] || key}
-                          </h3>
+                    <div key={key} className="md:col-span-12 rounded-[3.5rem] border border-studio-silver bg-white p-10 shadow-xl transition-all hover:shadow-2xl">
+                      <div className="mb-8 flex items-start justify-between gap-6">
+                        <div className="flex items-center gap-5">
+                          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-studio-paper text-vibrant-emerald shadow-inner">
+                            <CheckCircle2 size={28} />
+                          </div>
+                          <div className="space-y-1">
+                            <p className="text-[11px] font-black uppercase tracking-[0.25em] text-zinc-400">Criterion</p>
+                            <h3 className="text-2xl font-extrabold tracking-tight text-studio-ink">
+                              {CRITERIA_LABELS[key] || key}
+                            </h3>
+                          </div>
                         </div>
-                        <span className={`rounded-full border px-3 py-1 text-sm font-semibold ${getScoreColor(data.score)}`}>
+                        <span className={`rounded-2xl border-2 px-5 py-3 text-3xl font-black shadow-lg ${getScoreColor(data.score)}`}>
                           {data.score.toFixed(1)}
                         </span>
                       </div>
 
-                      <div className="space-y-4">
-                        <div className="flex gap-3">
-                          <CheckCircle2 size={17} className="mt-1 shrink-0 text-emerald-500" />
-                          <p className="text-base leading-8 text-zinc-800 whitespace-pre-line">
-                            {data.feedback}
+                      <div className="space-y-10">
+                        <div className="px-2">
+                          <p className="text-xl font-bold leading-[2.5rem] tracking-tight text-zinc-700 whitespace-pre-line">
+                            {formatProceduralText(data.feedback)}
                           </p>
                         </div>
-                        <div className="rounded-[1.35rem] border border-zinc-200 bg-zinc-50 px-4 py-4">
-                          <div className="mb-2 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.22em] text-zinc-500">
-                            <TrendingUp size={14} />
-                            Improvement Focus
+                        <div className="relative rounded-[3rem] border border-studio-silver bg-studio-paper/40 p-10 pb-16">
+                          <div className="mb-6 flex items-center gap-3 text-[12px] font-black uppercase tracking-[0.25em] text-vibrant-emerald">
+                            <TrendingUp size={20} />
+                            Improvement
                           </div>
-                          <p className="text-base leading-8 text-zinc-800 whitespace-pre-line">
-                            {data.improvement}
+                          <p className="text-xl font-bold leading-[2.5rem] tracking-tight text-studio-ink whitespace-pre-line">
+                            {formatProceduralText(data.improvement)}
                           </p>
+                          {extractSource(data.improvement) && (
+                            <div className="absolute bottom-6 left-10 flex items-center gap-1.5 text-[10px] font-bold tracking-widest text-zinc-400">
+                              <span className="opacity-50 text-[9px]">SOURCE //</span>
+                              <span>{extractSource(data.improvement).toUpperCase()}</span>
+                            </div>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -502,47 +524,44 @@ export default function SpeakingPage() {
                 </div>
 
                 {result.sampleResponse && (
-                  <div className={`${resultSurfaceClass} p-7 lg:p-8`}>
-                    <div className="mb-6 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-                      <div>
-                        <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-zinc-500">Model Answer</p>
-                        <h3 className="mt-1 text-2xl font-semibold tracking-[-0.04em] text-zinc-950">
-                          Sample response for {result.sampleResponse.level}
+                  <div className="rounded-[4rem] border border-studio-silver bg-white p-12 shadow-2xl">
+                    <div className="mb-10 flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
+                      <div className="space-y-2">
+                        <p className="text-[12px] font-black uppercase tracking-[0.3em] text-vibrant-gold">Model Answer</p>
+                        <h3 className="text-4xl font-extrabold tracking-tight text-studio-ink">
+                          Platinum Reference ({result.sampleResponse.level})
                         </h3>
                       </div>
-                      <span className="inline-flex items-center rounded-full border border-zinc-200 bg-zinc-50 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.22em] text-zinc-600">
-                        Recommended Practice
-                      </span>
                     </div>
 
-                    <div className="space-y-6">
-                      <div className="rounded-[1.5rem] border border-zinc-200 bg-zinc-50 px-5 py-5 text-zinc-800">
-                        <p className="text-[1.1rem] leading-9">
-                          {result.sampleResponse.text}
+                    <div className="space-y-10">
+                      <div className="rounded-[3rem] bg-studio-paper p-12 shadow-inner border border-studio-silver">
+                        <p className="text-2xl font-bold leading-[3.2rem] tracking-tight text-studio-ink/90 italic">
+                          "{result.sampleResponse.text}"
                         </p>
                       </div>
 
-                      <div className="rounded-[1.5rem] border border-zinc-200 bg-white">
-                        <div className="border-b border-zinc-100 px-5 py-4">
-                          <h4 className="text-[11px] font-semibold uppercase tracking-[0.24em] text-zinc-500">
-                            Academic Vocabulary
+                      <div className="overflow-hidden rounded-[3rem] border border-studio-silver bg-white">
+                        <div className="border-b border-studio-silver bg-studio-paper px-8 py-6">
+                          <h4 className="text-[12px] font-black uppercase tracking-[0.25em] text-studio-ink">
+                            High-Yield Vocabulary
                           </h4>
                         </div>
-                        <div className="overflow-x-auto px-5 py-3">
-                          <table className="w-full min-w-[34rem] text-sm">
+                        <div className="overflow-x-auto px-8 py-4">
+                          <table className="w-full min-w-[34rem]">
                             <thead>
-                              <tr className="border-b border-zinc-100 text-left text-zinc-500">
-                                <th className="pb-3 font-semibold">Vocabulary</th>
-                                <th className="pb-3 font-semibold">IPA</th>
-                                <th className="pb-3 font-semibold">Vietnamese</th>
+                              <tr className="border-b border-studio-silver text-left text-[11px] font-black uppercase tracking-widest text-zinc-400">
+                                <th className="pb-4 pt-2 px-4">Vocabulary</th>
+                                <th className="pb-4 pt-2 px-4">Articulation</th>
+                                <th className="pb-4 pt-2 px-4">Semantic Meaning</th>
                               </tr>
                             </thead>
-                            <tbody className="divide-y divide-zinc-100">
+                            <tbody>
                               {result.sampleResponse.vocabulary.map((item, index) => (
-                                <tr key={`${item.word}-${index}`}>
-                                  <td className="py-3 font-semibold text-zinc-900">{item.word}</td>
-                                  <td className="py-3 font-mono text-xs text-zinc-500">{item.ipa}</td>
-                                  <td className="py-3 text-zinc-600">{item.vietnamese}</td>
+                                <tr key={`${item.word}-${index}`} className="group hover:bg-studio-paper transition-colors">
+                                  <td className="py-5 px-4 text-xl font-black text-vibrant-emerald tracking-tight">{item.word}</td>
+                                  <td className="py-5 px-4 font-mono text-sm text-vibrant-rose font-bold">{item.ipa}</td>
+                                  <td className="py-5 px-4 text-base font-bold text-studio-ink">{item.vietnamese}</td>
                                 </tr>
                               ))}
                             </tbody>
@@ -556,25 +575,23 @@ export default function SpeakingPage() {
             ) : (
               <motion.div
                 key="empty"
-                initial={{ opacity: 0, y: 18 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -18 }}
-                transition={{ duration: 0.24, ease: 'easeOut' }}
-                className="flex min-h-[40rem] flex-col items-center justify-center overflow-hidden rounded-[2.5rem] border border-dashed border-zinc-200 bg-zinc-50/30 p-8 text-center"
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.95 }}
+                className="flex min-h-[45rem] flex-col items-center justify-center rounded-[4rem] border-4 border-dashed border-studio-silver bg-studio-paper/20 p-12 text-center"
               >
-                <div className="mb-6 flex h-20 w-20 items-center justify-center rounded-[2rem] bg-white shadow-sm ring-1 ring-zinc-200/50">
-                  <Mic size={28} className="text-zinc-400" />
+                <div className="group relative mb-10 flex h-32 w-32 items-center justify-center">
+                  <div className="absolute inset-0 animate-ping rounded-full bg-vibrant-emerald/10" />
+                  <div className="relative flex h-24 w-24 items-center justify-center rounded-[2.25rem] bg-white shadow-2xl transition-transform group-hover:scale-110 duration-500">
+                    <Mic size={40} className="text-zinc-200" />
+                  </div>
                 </div>
-                <h3 className="text-2xl font-semibold tracking-tight text-zinc-950">Waiting for response</h3>
-                <p className="mt-3 max-w-sm text-base leading-7 text-zinc-500">
-                  Pick a part and start recording on the left. Your full band score assessment and transcript will appear here.
-                </p>
-                <button
-                  onClick={() => setIsGuideOpen(true)}
-                  className="mt-8 text-sm font-semibold text-zinc-400 transition-colors hover:text-zinc-950 underline underline-offset-4"
-                >
-                  Need help getting started?
-                </button>
+                <div className="space-y-4">
+                  <h3 className="text-3xl font-black tracking-tight text-studio-ink">Studio Standby</h3>
+                  <p className="mx-auto max-w-sm text-lg font-medium leading-relaxed text-zinc-400">
+                    Connect your spoken response and start the AI sequence.
+                  </p>
+                </div>
               </motion.div>
             )}
           </AnimatePresence>

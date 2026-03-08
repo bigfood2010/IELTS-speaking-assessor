@@ -1,5 +1,4 @@
-import React from 'react';
-import { History, Loader2, Mic, Trophy } from 'lucide-react';
+import { History, Loader2, Mic, Sparkles, Trophy } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '@/store/AuthContext';
@@ -24,9 +23,9 @@ export default function DashboardPage() {
   };
 
   const getScoreColor = (score: number) => {
-    if (score >= 7) return 'text-emerald-500';
-    if (score >= 6) return 'text-blue-500';
-    return 'text-amber-500';
+    if (score >= 7.5) return 'text-vibrant-emerald';
+    if (score >= 6.5) return 'text-vibrant-gold';
+    return 'text-vibrant-rose';
   };
 
   const name = user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'Learner';
@@ -34,82 +33,90 @@ export default function DashboardPage() {
   const avatarUrl = user?.user_metadata?.avatar_url;
 
   return (
-    <div className="space-y-8 animate-in fade-in duration-500">
-      <header className="flex items-center gap-4">
-        {avatarUrl ? (
-          <img src={avatarUrl} alt="Avatar" className="w-14 h-14 rounded-full border border-zinc-200 shadow-sm" />
-        ) : (
-          <div className="w-14 h-14 rounded-full border border-zinc-200 bg-white flex items-center justify-center shadow-sm">
-            <span className="text-xl font-semibold text-zinc-500">{user?.email?.[0].toUpperCase()}</span>
-          </div>
-        )}
+    <div className="space-y-10 animate-in fade-in duration-700 font-sans">
+      <header className="flex items-center gap-5">
+        <div className="relative">
+          {avatarUrl ? (
+            <img src={avatarUrl} alt="Avatar" className="w-16 h-16 rounded-2xl border-2 border-white shadow-xl object-cover" />
+          ) : (
+            <div className="w-16 h-16 rounded-2xl border-2 border-white bg-vibrant-emerald flex items-center justify-center shadow-xl">
+              <span className="text-2xl font-bold text-white">{user?.email?.[0].toUpperCase()}</span>
+            </div>
+          )}
+          <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-vibrant-emerald rounded-full border-2 border-white" />
+        </div>
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight text-zinc-900">
+          <h1 className="text-3xl font-bold tracking-tight text-studio-ink">
             {getDayGreeting()}, {firstName}
           </h1>
+          <p className="text-sm font-medium text-zinc-500">Ready to boost your score today?</p>
         </div>
       </header>
 
-      <div className="grid grid-cols-1 gap-8 lg:grid-cols-12">
+      <div className="grid grid-cols-1 gap-10 lg:grid-cols-12">
         <div className="lg:col-span-8">
-          <div className="flex h-full flex-col items-center justify-center space-y-8 rounded-[2.5rem] border border-zinc-200 bg-white p-12 text-center shadow-sm">
-            <div className="flex h-20 w-20 items-center justify-center rounded-[2rem] bg-heritage-sage/30 text-heritage-forest shadow-sm transition-transform hover:scale-105 active:scale-95">
-              <Mic size={32} />
+          <div className="group relative flex h-full flex-col items-center justify-center space-y-10 rounded-[3rem] border border-studio-silver bg-white p-14 text-center shadow-[0_32px_64px_-12px_rgba(0,0,0,0.06)] transition-all hover:shadow-[0_48px_80px_-12px_rgba(0,0,0,0.08)]">
+            <div className="flex h-24 w-24 items-center justify-center rounded-[2.25rem] bg-vibrant-gold/15 text-vibrant-gold shadow-[0_20px_40px_-8px_rgba(255,209,80,0.25)] ring-1 ring-vibrant-gold/20 transition-transform group-hover:scale-110 duration-500">
+              <Mic size={40} strokeWidth={2.5} />
             </div>
-            <div className="space-y-3">
-              <h3 className="text-3xl font-bold tracking-tight text-zinc-950">Start New Practice</h3>
-              <p className="mx-auto max-w-md text-base text-zinc-500 leading-relaxed">
-                Unlock immediate AI assessment for your IELTS speaking response.
+            <div className="space-y-4">
+              <h3 className="text-4xl font-extrabold tracking-tight text-studio-ink">Practice Studio</h3>
+              <p className="mx-auto max-w-md text-lg font-medium text-zinc-500 leading-relaxed">
+                Start speaking to get instant AI feedback that helps you improve.
               </p>
             </div>
             <Link
               to="/app/speaking"
-              className="rounded-full bg-luxe-espresso px-10 py-4 text-base font-semibold text-white shadow-[0_16px_32px_rgba(45,91,255,0.15)] ring-1 ring-white/10 transition-all hover:bg-zinc-900 hover:scale-[1.02] active:scale-[0.98]"
+              className="group relative inline-flex items-center justify-center overflow-hidden rounded-full bg-vibrant-emerald px-12 py-5 text-lg font-bold text-white shadow-2xl shadow-vibrant-emerald/25 transition-all hover:scale-[1.05] active:scale-[0.95]"
             >
-              Enter Studio
+              <span className="relative z-10 flex items-center gap-2">
+                Enter Studio
+                <Sparkles size={18} className="animate-pulse" />
+              </span>
+              <div className="absolute inset-x-0 bottom-0 h-1 bg-white/20" />
             </Link>
           </div>
         </div>
 
-        <div className="flex flex-col gap-8 lg:col-span-4">
-          <div className="flex flex-1 items-center gap-6 rounded-[2rem] border border-zinc-200 bg-white p-8 shadow-sm">
-            <div className="shrink-0 rounded-2xl bg-heritage-sage/40 p-4 text-heritage-forest">
-              <Trophy size={28} />
+        <div className="flex flex-col gap-10 lg:col-span-4">
+          <div className="flex flex-1 items-center gap-8 rounded-[2.5rem] border border-studio-silver bg-white p-10 shadow-sm">
+            <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-vibrant-rose/10 text-vibrant-rose">
+              <Trophy size={32} />
             </div>
             <div className="flex-1">
-              <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-zinc-400 mb-1">Recent Score</p>
+              <p className="text-[12px] font-bold uppercase tracking-[0.25em] text-zinc-400 mb-2">High Score</p>
               <div className="flex items-baseline gap-2">
                 {isLoading ? (
-                  <Loader2 className="h-6 w-6 animate-spin text-zinc-400" />
+                  <Loader2 className="h-8 w-8 animate-spin text-zinc-300" />
                 ) : latestAssessment ? (
                   <>
-                    <span className={`text-5xl font-bold tracking-tight ${getScoreColor(latestAssessment.overall_band)}`}>
+                    <span className={`text-6xl font-black tracking-tighter ${getScoreColor(latestAssessment.overall_band)}`}>
                       {latestAssessment.overall_band.toFixed(1)}
                     </span>
-                    <span className="text-xl font-medium text-zinc-300">/ 9.0</span>
+                    <span className="text-xl font-bold text-zinc-300">/ 9.0</span>
                   </>
                 ) : (
-                  <span className="text-4xl font-bold tracking-tight text-zinc-300">--</span>
+                  <span className="text-5xl font-black tracking-tighter text-zinc-200">--</span>
                 )}
               </div>
             </div>
           </div>
 
-          <div className="flex flex-1 items-center gap-6 rounded-[2rem] border border-zinc-200 bg-white p-8 shadow-sm">
-            <div className="shrink-0 rounded-2xl bg-heritage-sage/20 p-4 text-heritage-forest/80">
-              <History size={28} />
+          <div className="flex flex-1 items-center gap-8 rounded-[2.5rem] border border-studio-silver bg-white p-10 shadow-sm">
+            <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-vibrant-emerald/10 text-vibrant-emerald">
+              <History size={32} />
             </div>
             <div className="flex-1">
-              <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-zinc-400 mb-1">Total Practices</p>
+              <p className="text-[12px] font-bold uppercase tracking-[0.25em] text-zinc-400 mb-2">Total Drafts</p>
               <div className="flex items-baseline gap-2">
                 {isLoading ? (
-                  <Loader2 className="h-6 w-6 animate-spin text-zinc-400" />
+                  <Loader2 className="h-8 w-8 animate-spin text-zinc-300" />
                 ) : (
                   <>
-                    <span className="text-5xl font-bold tracking-tight text-zinc-950">
+                    <span className="text-6xl font-black tracking-tighter text-studio-ink">
                       {assessments?.length || 0}
                     </span>
-                    <span className="text-base font-medium text-zinc-400">sessions</span>
+                    <span className="text-lg font-bold text-zinc-400">runs</span>
                   </>
                 )}
               </div>

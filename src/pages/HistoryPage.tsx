@@ -23,13 +23,57 @@ export default function HistoryPage() {
     pronunciation: 'Pronunciation',
   };
 
-  const resultSurfaceClass = 'rounded-[2rem] border border-zinc-200/80 bg-white shadow-sm';
+  const resultSurfaceClass = 'rounded-[2.5rem] border border-studio-silver bg-white shadow-sm';
 
   const getScoreColor = (score: number) => {
-    if (score >= 7) return 'text-emerald-600 bg-emerald-50 border-emerald-100';
-    if (score >= 6) return 'text-blue-600 bg-blue-50 border-blue-100';
-    return 'text-amber-600 bg-amber-50 border-amber-100';
+    if (score >= 7.5) return 'border-vibrant-emerald bg-vibrant-emerald/5 text-vibrant-emerald';
+    if (score >= 6.5) return 'border-vibrant-gold/30 bg-vibrant-gold/10 text-vibrant-gold';
+    return 'border-vibrant-rose/20 bg-vibrant-rose/5 text-vibrant-rose';
   };
+
+  function formatProceduralText(text: string) {
+    if (!text) return text;
+    
+    // Clean decorative symbols and separators
+    let cleaned = text.replace(/[✦➤▪•◈▷➢]/g, '').replace(/\s*=\s*/g, '\n');
+    
+    // Remove the Source part entirely if it exists (we render it separately)
+    cleaned = cleaned.replace(/\bSource:\s*.*$/gi, '');
+
+    const sections = cleaned.split('\n').map(s => s.trim()).filter(Boolean);
+    const vnRegex = /[àáảãạăằắẳẵặâầấẩẫậèéẻẽẹêềếểễệìíỉĩịòóỏõọôồốổỗộơờớởỡợùúủũụưừứửữựỳýỷỹỵđ]/i;
+
+    let finalLines: string[] = [];
+    
+    sections.forEach(section => {
+      if (section.length > 50 && vnRegex.test(section)) {
+        const sentences = section.split('. ');
+        let currentPart = "";
+        
+        sentences.forEach((sentence, idx) => {
+          const isFirstVN = vnRegex.test(sentence) && !vnRegex.test(currentPart);
+          const cleanSentence = sentence.trim() + (idx < sentences.length - 1 ? '.' : '');
+          
+          if (isFirstVN && currentPart.length > 0) {
+            finalLines.push(currentPart.trim());
+            currentPart = cleanSentence;
+          } else {
+            currentPart += (currentPart ? ' ' : '') + cleanSentence;
+          }
+        });
+        if (currentPart) finalLines.push(currentPart.trim());
+      } else {
+        finalLines.push(section);
+      }
+    });
+
+    return finalLines.join('\n');
+  }
+
+  function extractSource(text: string): string | null {
+    const match = text.match(/\bSource:\s*(.*)$/i);
+    return match ? match[1].trim() : null;
+  }
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('en-US', {
@@ -42,96 +86,92 @@ export default function HistoryPage() {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center p-20">
-        <Loader2 className="w-8 h-8 text-zinc-400 animate-spin" />
+        <Loader2 className="w-10 h-10 text-vibrant-emerald animate-spin" />
       </div>
     );
   }
 
   if (isError) {
     return (
-      <div className="p-8 text-center bg-red-50 text-red-600 rounded-3xl border border-red-100">
-        Failed to load your practice history.
+      <div className="p-10 text-center bg-vibrant-rose/5 text-vibrant-rose rounded-[3rem] border border-vibrant-rose/10 font-bold">
+        Failed to reconstruct your practice archive.
       </div>
     );
   }
 
   return (
-    <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+    <div className="space-y-10 animate-in fade-in slide-in-from-bottom-6 duration-700 font-sans pb-20">
       <header className="flex items-end justify-between">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight text-zinc-950">Practice History</h1>
+        <div className="space-y-2">
+          <p className="text-[12px] font-black uppercase tracking-[0.3em] text-vibrant-emerald">Archives</p>
+          <h1 className="text-4xl sm:text-5xl font-black tracking-tight text-studio-ink">Studio History</h1>
         </div>
-        <div className="text-sm font-bold text-zinc-400 uppercase tracking-widest hidden sm:block">
-          {assessments?.length || 0} Sessions
+        <div className="text-[12px] font-black text-zinc-300 uppercase tracking-[0.4em] hidden sm:block">
+          {assessments?.length || 0} SESSIONS LOGGED
         </div>
       </header>
 
       {!assessments || assessments.length === 0 ? (
-        <div className="p-16 text-center bg-white rounded-3xl border border-dashed border-zinc-200">
-          <div className="w-16 h-16 bg-zinc-50 rounded-2xl flex items-center justify-center mx-auto mb-4">
-            <TrendingUp size={24} className="text-zinc-300" />
+        <div className="p-20 text-center bg-studio-paper/20 rounded-[4rem] border-4 border-dashed border-studio-silver">
+          <div className="w-24 h-24 bg-white rounded-[2.5rem] flex items-center justify-center mx-auto mb-8 shadow-xl">
+            <TrendingUp size={32} className="text-zinc-200" />
           </div>
-          <h3 className="text-lg font-bold mb-2">No history yet</h3>
-          <p className="text-zinc-500 mb-6">Complete your first mock test to start tracking your progress.</p>
+          <h3 className="text-3xl font-black text-studio-ink mb-4">No Sessions Yet</h3>
+          <p className="text-lg font-medium text-zinc-500 mb-10 max-w-sm mx-auto">Complete your first studio session to start building your performance profile.</p>
           <Link
             to="/app/speaking"
-            className="px-6 py-2.5 bg-zinc-900 text-white rounded-full text-sm font-medium hover:bg-zinc-800 transition-colors shadow-sm inline-block"
+            className="px-10 py-4 bg-vibrant-emerald text-white rounded-full text-lg font-black hover:scale-105 transition-all shadow-xl shadow-vibrant-emerald/30 inline-block"
           >
-            Start Practice
+            Open Studio
           </Link>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
           {assessments.map((record) => (
-            <div key={record.id} className="bg-white rounded-3xl border border-zinc-100 shadow-sm overflow-hidden group hover:border-zinc-300 transition-colors flex flex-col">
-              <div className="p-6 border-b border-zinc-50 flex-1">
-                <div className="flex items-center justify-between mb-4">
-                  <div className="flex items-center gap-2 text-xs font-bold text-zinc-400 uppercase tracking-widest">
-                    <Calendar size={14} />
+            <div key={record.id} className="bg-white rounded-[3rem] border border-studio-silver shadow-sm overflow-hidden group hover:border-vibrant-emerald/30 transition-all hover:shadow-2xl flex flex-col">
+              <div className="p-8 border-b border-studio-silver flex-1">
+                <div className="flex items-center justify-between mb-6">
+                  <div className="flex items-center gap-2 text-[10px] font-black text-zinc-400 uppercase tracking-widest">
+                    <Calendar size={14} className="text-vibrant-gold" />
                     {formatDate(record.created_at)}
                   </div>
-                  <div className={`px-3 py-1 rounded-full text-sm font-bold border ${getScoreColor(record.overall_band)}`}>
-                    Band {record.overall_band.toFixed(1)}
+                  <div className={`px-4 py-1.5 rounded-2xl text-[12px] font-black border-2 shadow-sm ${getScoreColor(record.overall_band)}`}>
+                    BAND {record.overall_band.toFixed(1)}
                   </div>
                 </div>
                 
-                <h3 className="font-bold text-zinc-900 line-clamp-2 leading-snug mb-3 min-h-[48px]">
+                <h3 className="text-xl font-extrabold text-studio-ink line-clamp-2 leading-tight mb-4 min-h-[56px] tracking-tight">
                   {record.question}
                 </h3>
                 
                 <div className="flex items-center gap-3">
-                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-zinc-100 text-zinc-500 rounded-lg text-xs font-semibold">
-                    <BookOpen size={12} />
-                    Part {record.part}
+                  <span className="inline-flex items-center gap-2 px-3 py-1.5 bg-studio-paper text-studio-ink rounded-xl text-[10px] font-black uppercase tracking-widest">
+                    <BookOpen size={14} className="text-vibrant-emerald" />
+                    PART {record.part}
                   </span>
                 </div>
               </div>
 
               {/* Criteria minimap */}
-              <div className="px-6 py-4 bg-zinc-50 grid grid-cols-4 gap-2 text-center text-xs">
-                <div>
-                  <div className="text-zinc-400 font-medium mb-1 truncate">FC</div>
-                  <div className="font-bold text-zinc-700">{record.criteria_fluency}</div>
-                </div>
-                <div>
-                  <div className="text-zinc-400 font-medium mb-1 truncate">LR</div>
-                  <div className="font-bold text-zinc-700">{record.criteria_lexical}</div>
-                </div>
-                <div>
-                  <div className="text-zinc-400 font-medium mb-1 truncate">GR</div>
-                  <div className="font-bold text-zinc-700">{record.criteria_grammar}</div>
-                </div>
-                <div>
-                  <div className="text-zinc-400 font-medium mb-1 truncate">PR</div>
-                  <div className="font-bold text-zinc-700">{record.criteria_pronunciation}</div>
-                </div>
+              <div className="px-8 py-6 bg-studio-paper/40 grid grid-cols-4 gap-4 text-center">
+                {[
+                  ['FC', record.criteria_fluency, 'vibrant-emerald'],
+                  ['LR', record.criteria_lexical, 'vibrant-gold'],
+                  ['GR', record.criteria_grammar, 'vibrant-rose'],
+                  ['PR', record.criteria_pronunciation, 'studio-ink']
+                ].map(([label, score, color]) => (
+                  <div key={label}>
+                    <div className="text-[9px] font-black text-zinc-400 mb-1 tracking-widest">{label}</div>
+                    <div className={`text-lg font-black text-${color}`}>{score}</div>
+                  </div>
+                ))}
               </div>
-              <div className="p-6 pt-0 mt-auto">
+              <div className="p-8 pt-0 mt-auto">
                 <button
                   onClick={() => setSelectedRecord(record)}
-                  className="w-full inline-flex items-center justify-center gap-2 rounded-xl border border-zinc-200 bg-white py-2.5 text-sm font-semibold text-zinc-700 transition-all hover:border-zinc-300 hover:bg-zinc-50 hover:text-zinc-950"
+                  className="w-full inline-flex items-center justify-center gap-3 rounded-[1.5rem] border-2 border-studio-silver bg-white py-4 text-[13px] font-black text-studio-ink transition-all hover:border-studio-ink hover:bg-studio-paper"
                 >
-                  View Details
+                  REVIEW SESSION
                 </button>
               </div>
             </div>
@@ -148,95 +188,109 @@ export default function HistoryPage() {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setSelectedRecord(null)}
-              className="fixed inset-0 z-50 bg-zinc-950/20 backdrop-blur-md"
+              className="fixed inset-0 z-50 bg-studio-ink/20 backdrop-blur-xl"
             />
             <motion.div
-              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              initial={{ opacity: 0, scale: 0.9, y: 30 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              className="fixed inset-x-4 top-[5%] bottom-[5%] z-50 mx-auto max-w-4xl overflow-hidden rounded-[2.5rem] border border-zinc-200 bg-[#F9FAFB] shadow-2xl flex flex-col"
+              exit={{ opacity: 0, scale: 0.9, y: 30 }}
+              className="fixed inset-x-4 top-[5%] bottom-[5%] z-50 mx-auto max-w-5xl overflow-hidden rounded-[3.5rem] border border-studio-silver bg-studio-paper shadow-3xl flex flex-col"
             >
-              <div className="p-6 md:p-8 border-b border-zinc-100 bg-white flex items-center justify-between shrink-0">
-                <div className="space-y-1">
-                  <div className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.24em] text-zinc-400">
-                    <Calendar size={14} />
-                    {formatDate(selectedRecord.created_at)}
+              <div className="p-10 md:p-12 border-b border-studio-silver bg-white flex items-center justify-between shrink-0">
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2 text-[11px] font-black uppercase tracking-[0.3em] text-vibrant-gold">
+                    <Calendar size={16} />
+                    SESSION // {formatDate(selectedRecord.created_at).toUpperCase()}
                   </div>
-                  <h2 className="text-2xl font-bold tracking-tight text-zinc-950">
-                    Review Practice Session
+                  <h2 className="text-4xl font-black tracking-tight text-studio-ink">
+                    Session Reconstruction
                   </h2>
                 </div>
                 <button
                   onClick={() => setSelectedRecord(null)}
-                  className="flex h-10 w-10 items-center justify-center rounded-full border border-zinc-100 bg-white text-zinc-400 transition-colors hover:text-zinc-950"
+                  className="flex h-14 w-14 items-center justify-center rounded-[2rem] border-2 border-studio-silver bg-white text-zinc-300 transition-all hover:text-vibrant-rose hover:border-vibrant-rose/20"
                 >
-                  <X size={20} />
+                  <X size={28} />
                 </button>
               </div>
 
-              <div className="flex-1 overflow-y-auto p-6 md:p-8 space-y-8">
-                <div className={`${resultSurfaceClass} p-8`}>
-                  <div className="mb-4 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.24em] text-zinc-500">
-                    <MessageSquare size={15} />
-                    The Question
+              <div className="flex-1 overflow-y-auto p-10 md:p-14 space-y-12">
+                <div className="rounded-[3rem] border border-studio-silver bg-white p-10 shadow-sm">
+                  <div className="mb-6 flex items-center gap-2 text-[12px] font-black uppercase tracking-[0.3em] text-zinc-400">
+                    <MessageSquare size={18} className="text-vibrant-gold" />
+                    Archive Prompt
                   </div>
-                  <h3 className="text-xl font-semibold leading-relaxed text-zinc-900">
+                  <h3 className="text-2xl font-black leading-tight text-studio-ink pr-12">
                     {selectedRecord.question}
                   </h3>
-                  <div className="mt-4 inline-flex items-center gap-2 rounded-full bg-zinc-100 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.22em] text-zinc-500">
-                    <BookOpen size={13} />
-                    IELTS Part {selectedRecord.part}
+                  <div className="mt-8 inline-flex items-center gap-3 rounded-2xl bg-studio-paper px-5 py-2 text-[11px] font-black uppercase tracking-[0.25em] text-studio-ink">
+                   <BookOpen size={16} className="text-vibrant-emerald" />
+                   IELTS PART {selectedRecord.part}
                   </div>
                 </div>
 
-                <div className={`${resultSurfaceClass} overflow-hidden p-8`}>
-                  <div className="space-y-2">
-                    <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-zinc-500">Overall Band Score</p>
-                    <div className="flex items-end gap-3">
-                      <span className="text-6xl font-semibold leading-none tracking-tight text-zinc-950">
+                <div className="rounded-[3rem] border border-studio-silver bg-white p-10 shadow-sm">
+                  <div className="space-y-4">
+                    <p className="text-[12px] font-black uppercase tracking-[0.3em] text-zinc-400">Achieved Band score</p>
+                    <div className="flex items-end gap-3 text-studio-ink">
+                      <span className="text-8xl font-black leading-none tracking-tighter">
                         {selectedRecord.overall_band.toFixed(1)}
                       </span>
-                      <span className="pb-2 text-lg font-medium text-zinc-400">/ 9.0</span>
+                      <span className="pb-4 text-3xl font-black text-zinc-200">/ 9.0</span>
                     </div>
                   </div>
                 </div>
 
-                <div className={`${resultSurfaceClass} p-8`}>
-                  <div className="mb-4 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.24em] text-zinc-500">
-                    <Languages size={15} />
-                    Transcript
+                <div className="rounded-[3.5rem] border border-studio-silver bg-white p-10 shadow-sm">
+                  <div className="mb-8 flex items-center gap-2 text-[12px] font-black uppercase tracking-[0.3em] text-zinc-400">
+                    <Languages size={18} className="text-vibrant-emerald" />
+                    Neural Transcription
                   </div>
-                  <div className="rounded-[1.5rem] bg-zinc-50 px-6 py-6 text-[1.05rem] leading-relaxed text-zinc-800">
+                  <div className="rounded-[2.5rem] bg-studio-paper p-10 text-2xl font-bold leading-[2.8rem] tracking-tight text-studio-ink">
                     {selectedRecord.transcription}
                   </div>
                 </div>
 
-                <div className="grid gap-6 md:grid-cols-2">
+                <div className="grid grid-cols-1 gap-8 md:grid-cols-12 items-start">
                   {Object.entries(selectedRecord.feedback_data.criteria || {}).map(([key, data]: [string, any]) => (
-                    <div key={key} className={`${resultSurfaceClass} p-6`}>
-                      <div className="mb-5 flex items-start justify-between gap-4">
-                        <div className="space-y-1">
-                          <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-zinc-500">Criterion</p>
-                          <h3 className="text-lg font-semibold tracking-[-0.03em] text-zinc-950">
-                            {CRITERIA_LABELS[key] || key}
-                          </h3>
+                    <div key={key} className="md:col-span-12 rounded-[3.5rem] border border-studio-silver bg-white p-10 shadow-sm flex flex-col">
+                      <div className="mb-8 flex items-start justify-between gap-6">
+                        <div className="flex items-center gap-5">
+                          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-studio-paper text-vibrant-emerald shadow-inner">
+                            <CheckCircle2 size={28} />
+                          </div>
+                          <div className="space-y-1">
+                            <p className="text-[11px] font-black uppercase tracking-[0.25em] text-zinc-400">Dimension</p>
+                            <h3 className="text-2xl font-extrabold tracking-tight text-studio-ink">
+                              {CRITERIA_LABELS[key] || key}
+                            </h3>
+                          </div>
                         </div>
-                        <span className={`rounded-full border px-3 py-1 text-sm font-semibold ${getScoreColor(data.score)}`}>
+                        <span className={`rounded-2xl border-2 px-5 py-3 text-3xl font-black shadow-lg ${getScoreColor(data.score)}`}>
                           {data.score.toFixed(1)}
                         </span>
                       </div>
 
-                      <div className="space-y-4 text-sm leading-relaxed text-zinc-700">
-                        <div className="flex gap-3">
-                          <CheckCircle2 size={17} className="mt-1 shrink-0 text-emerald-500" />
-                          <p className="whitespace-pre-line">{data.feedback}</p>
+                      <div className="space-y-10">
+                        <div className="px-2">
+                          <p className="text-xl font-bold leading-[2.5rem] tracking-tight text-zinc-700 whitespace-pre-line">
+                            {formatProceduralText(data.feedback)}
+                          </p>
                         </div>
-                        <div className="rounded-[1.35rem] bg-zinc-50 p-4">
-                          <div className="mb-2 flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.2em] text-zinc-400">
-                            <TrendingUp size={14} />
-                            Improvement
+                        <div className="relative rounded-[3rem] border border-studio-silver bg-studio-paper/40 p-10 pb-16">
+                          <div className="mb-6 flex items-center gap-3 text-[12px] font-black uppercase tracking-[0.25em] text-vibrant-emerald">
+                            <TrendingUp size={20} />
+                            Strategic Gains
                           </div>
-                          <p className="whitespace-pre-line">{data.improvement}</p>
+                          <p className="text-xl font-bold leading-[2.5rem] tracking-tight text-studio-ink whitespace-pre-line">
+                            {formatProceduralText(data.improvement)}
+                          </p>
+                          {extractSource(data.improvement) && (
+                            <div className="absolute bottom-6 right-10 flex items-center gap-2 rounded-full bg-white px-5 py-2 text-[11px] font-black tracking-widest text-zinc-400 shadow-sm border border-studio-silver">
+                              <span className="opacity-60 text-[9px]">SOURCE //</span>
+                              <span>{extractSource(data.improvement).toUpperCase()}</span>
+                            </div>
+                          )}
                         </div>
                       </div>
                     </div>
