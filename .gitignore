@@ -1,8 +1,55 @@
+# Dependencies
 node_modules/
-build/
+.pnpm-store/
+jspm_packages/
+
+# Production / Build
 dist/
+build/
+out/
+.next/
+.cache/
+public/build/
+
+# IDEs and Editors
+.vscode/*
+!.vscode/extensions.json
+.idea/
+*.swp
+*.swo
+.project
+.classpath
+.settings/
+
+# Testing
 coverage/
-.DS_Store
+.nyc_output/
+
+# Logs
 *.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Environment
 .env*
 !.env.example
+
+# OS files
+.DS_Store
+Thumbs.db
+.AppleDouble
+.LSOverride
+Icon?
+
+# User specific docs
+docs/
+
+# Task-specific or agent-generated
+.agent/
+.gemini/
+metadata.json
+
+# database
+database.sql
