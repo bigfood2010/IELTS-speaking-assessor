@@ -4,10 +4,21 @@
 @theme {
   --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+  
+  --color-heritage-red: #A82323;
+  --color-heritage-cream: #FEFFD3;
+  --color-heritage-sage: #BCD9A2;
+  --color-heritage-forest: #6D9E51;
+
+  /* 2025 Trending Luxe Palette */
+  --color-luxe-espresso: #121212;
+  --color-luxe-cobalt: #2D5BFF;
+  --color-luxe-sand: #F4F1EA;
+  --color-luxe-slate: #1E293B;
 }
 
 @layer base {
   body {
-    @apply antialiased;
+    @apply antialiased bg-white text-zinc-900 leading-relaxed;
   }
 }
