@@ -2,7 +2,14 @@ import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '@/store/AuthContext';
 import { getUserAssessments, type AssessmentRecord } from '@/services/historyService';
-import { Loader2, Calendar, BookOpen, TrendingUp, Languages, MessageSquare, CheckCircle2, X } from 'lucide-react';
+import Loader2 from 'lucide-react/dist/esm/icons/loader-2';
+import Calendar from 'lucide-react/dist/esm/icons/calendar';
+import BookOpen from 'lucide-react/dist/esm/icons/book-open';
+import TrendingUp from 'lucide-react/dist/esm/icons/trending-up';
+import Languages from 'lucide-react/dist/esm/icons/languages';
+import MessageSquare from 'lucide-react/dist/esm/icons/message-square';
+import CheckCircle2 from 'lucide-react/dist/esm/icons/check-circle-2';
+import X from 'lucide-react/dist/esm/icons/x';
 import { Link } from 'react-router-dom';
 import { AnimatePresence, motion } from 'motion/react';
 
@@ -31,17 +38,16 @@ export default function HistoryPage() {
     return 'border-vibrant-rose/20 bg-vibrant-rose/5 text-vibrant-rose';
   };
 
-  function formatProceduralText(text: string) {
-    if (!text) return text;
-    
-    // Clean decorative symbols and separators
-    let cleaned = text.replace(/[✦➤▪•◈▷➢]/g, '').replace(/\s*=\s*/g, '\n');
-    
-    // Remove the Source part entirely if it exists (we render it separately)
-    cleaned = cleaned.replace(/\bSource:\s*.*$/gi, '');
+  const vnRegex = /[àáảãạăằắẳẵặâầấẩẫậèéẻẽẹêềếểễệìíỉĩịòóỏõọôồốổỗộơờớởỡợùúủũụưừứửữựỳýỷỹỵđ]/i;
 
-    const sections = cleaned.split('\n').map(s => s.trim()).filter(Boolean);
-    const vnRegex = /[àáảãạăằắẳẵặâầấẩẫậèéẻẽẹêềếểễệìíỉĩịòóỏõọôồốổỗộơờớởỡợùúủũụưừứửữựỳýỷỹỵđ]/i;
+function formatProceduralText(text: string) {
+  if (!text) return text;
+
+  let cleaned = text.replace(/[✦➤▪•◈▷➢]/g, '').replace(/\s*=\s*/g, '\n');
+
+  cleaned = cleaned.replace(/\bSource:\s*.*$/gi, '');
+
+  const sections = cleaned.split('\n').map(s => s.trim()).filter(Boolean);
 
     let finalLines: string[] = [];
     
@@ -152,7 +158,6 @@ export default function HistoryPage() {
                 </div>
               </div>
 
-              {/* Criteria minimap */}
               <div className="px-8 py-6 bg-studio-paper/40 grid grid-cols-4 gap-4 text-center">
                 {[
                   ['FC', record.criteria_fluency, 'vibrant-emerald'],
@@ -179,9 +184,8 @@ export default function HistoryPage() {
         </div>
       )}
 
-      {/* Detail Modal */}
       <AnimatePresence>
-        {selectedRecord && (
+        {selectedRecord ? (
           <>
             <motion.div
               initial={{ opacity: 0 }}
@@ -285,12 +289,12 @@ export default function HistoryPage() {
                           <p className="text-xl font-bold leading-[2.5rem] tracking-tight text-studio-ink whitespace-pre-line">
                             {formatProceduralText(data.improvement)}
                           </p>
-                          {extractSource(data.improvement) && (
+                          {extractSource(data.improvement) ? (
                             <div className="absolute bottom-6 right-10 flex items-center gap-2 rounded-full bg-white px-5 py-2 text-[11px] font-black tracking-widest text-zinc-400 shadow-sm border border-studio-silver">
                               <span className="opacity-60 text-[9px]">SOURCE //</span>
-                              <span>{extractSource(data.improvement).toUpperCase()}</span>
+                              <span>{extractSource(data.improvement)!.toUpperCase()}</span>
                             </div>
-                          )}
+                          ) : null}
                         </div>
                       </div>
                     </div>
@@ -299,7 +303,7 @@ export default function HistoryPage() {
               </div>
             </motion.div>
           </>
-        )}
+        ) : null}
       </AnimatePresence>
     </div>
   );

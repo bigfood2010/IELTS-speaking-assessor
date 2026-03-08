@@ -1,9 +1,22 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
-import { AlertCircle, BookOpen, Check, CheckCircle2, Copy, HelpCircle, Languages, MessageSquare, Mic, Save, Sparkles, TrendingUp, X } from 'lucide-react';
+import AlertCircle from 'lucide-react/dist/esm/icons/alert-circle';
+import BookOpen from 'lucide-react/dist/esm/icons/book-open';
+import Check from 'lucide-react/dist/esm/icons/check';
+import CheckCircle2 from 'lucide-react/dist/esm/icons/check-circle-2';
+import Copy from 'lucide-react/dist/esm/icons/copy';
+import HelpCircle from 'lucide-react/dist/esm/icons/help-circle';
+import Languages from 'lucide-react/dist/esm/icons/languages';
+import MessageSquare from 'lucide-react/dist/esm/icons/message-square';
+import Mic from 'lucide-react/dist/esm/icons/mic';
+import Save from 'lucide-react/dist/esm/icons/save';
+import Sparkles from 'lucide-react/dist/esm/icons/sparkles';
+import TrendingUp from 'lucide-react/dist/esm/icons/trending-up';
+import X from 'lucide-react/dist/esm/icons/x';
+import Loader2 from 'lucide-react/dist/esm/icons/loader-2';
 import { useMutation } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
-import { AudioRecorder } from '@/components/molecules/AudioRecorder';
+const AudioRecorder = React.lazy(() => import('@/components/molecules/AudioRecorder').then(m => ({ default: m.AudioRecorder })));
 import { useGeminiKey } from '@/hooks/useGeminiKey';
 import { formatDateTimeForLocale } from '@/lib/pacificTime';
 import { assessSpeaking, GeminiAssessmentError } from '@/services/geminiService';
@@ -35,40 +48,41 @@ function getAssessmentErrorTitle(error: Error) {
   return 'Audio analysis failed';
 }
 
+const vnRegex = /[àáảãạăằắẳẵặâầấẩẫậèéẻẽẹêềếểễệìíỉĩịòóỏõọôồốổỗộơờớởỡợùúủũụưừứửữựỳýỷỹỵđ]/i;
+
 function formatProceduralText(text: string) {
   if (!text) return text;
-  
-  // Clean decorative symbols and separators
+
   let cleaned = text.replace(/[✦➤▪•◈▷➢]/g, '').replace(/\s*=\s*/g, '\n');
-  
-  // Remove Source or Resource part entirely (we render it separately)
+
   cleaned = cleaned.replace(/\b(Source|Resource):\s*.*$/gi, '');
 
   const sections = cleaned.split('\n').map(s => s.trim()).filter(Boolean);
-  const vnRegex = /[àáảãạăằắẳẵặâầấẩẫậèéẻẽẹêềếểễệìíỉĩịòóỏõọôồốổỗộơờớởỡợùúủũụưừứửữựỳýỷỹỵđ]/i;
-
   let finalLines: string[] = [];
-  
+
   sections.forEach(section => {
-    if (section.length > 50 && vnRegex.test(section)) {
-      const sentences = section.split('. ');
-      let currentPart = "";
-      
-      sentences.forEach((sentence, idx) => {
-        const isFirstVN = vnRegex.test(sentence) && !vnRegex.test(currentPart);
-        const cleanSentence = sentence.trim() + (idx < sentences.length - 1 ? '.' : '');
-        
-        if (isFirstVN && currentPart.length > 0) {
-          finalLines.push(currentPart.trim());
-          currentPart = cleanSentence;
-        } else {
-          currentPart += (currentPart ? ' ' : '') + cleanSentence;
+    let processedSection = section.replace(/([.!?])(?=[ÀÁẢÃẠĂẰẮẲẴẶÂẦẤẨẪẬÈÉẺẼẸÊỀẾỂỄỆÌÍỈĨỊÒÓỎÕỌÔỒỐỔỖỘƠỜỚỞỠỢÙÚỦŨỤƯỪỨỬỮỰỲÝỶỸỴĐ])/g, '$1\n');
+
+    const subsections = processedSection.split('\n');
+    
+    subsections.forEach(sub => {
+      if (vnRegex.test(sub)) {
+        const firstVNIndex = sub.search(vnRegex);
+        if (firstVNIndex > 0) {
+          const lastTerminatorIndex = sub.lastIndexOf('.', firstVNIndex);
+          if (lastTerminatorIndex !== -1 && lastTerminatorIndex < firstVNIndex) {
+            const before = sub.substring(0, lastTerminatorIndex + 1).trim();
+            const after = sub.substring(lastTerminatorIndex + 1).trim();
+            if (before && after) {
+              finalLines.push(before);
+              finalLines.push(after);
+              return;
+            }
+          }
         }
-      });
-      if (currentPart) finalLines.push(currentPart.trim());
-    } else {
-      finalLines.push(section);
-    }
+      }
+      finalLines.push(sub);
+    });
   });
 
   return finalLines.join('\n');
@@ -104,9 +118,9 @@ export default function SpeakingPage() {
   const currentState = partStates[part];
   const { questions, result, audioUrl } = currentState;
 
-  const updateCurrentPartState = (updates: Partial<PartState>) => {
+  const updateCurrentPartState = React.useCallback((updates: Partial<PartState>) => {
     updatePartState(part, updates);
-  };
+  }, [part, updatePartState]);
 
   const { apiKey } = useGeminiKey();
   const { user } = useAuth();
@@ -141,24 +155,24 @@ export default function SpeakingPage() {
     },
   });
 
-  const copyToClipboard = (text: string, id: string) => {
+  const copyToClipboard = React.useCallback((text: string, id: string) => {
     navigator.clipboard.writeText(text).then(() => {
       setCopiedId(id);
       window.setTimeout(() => setCopiedId(null), 2000);
     });
-  };
+  }, []);
 
-  const clearAudio = () => {
+  const clearAudio = React.useCallback(() => {
     if (audioUrl) {
       URL.revokeObjectURL(audioUrl);
     }
     updateCurrentPartState({ audioUrl: null, base64: null, mimeType: null, result: null });
-  };
+  }, [audioUrl, updateCurrentPartState]);
 
-  const handleRecordingComplete = (base64: string, mimeType: string, url: string) => {
+  const handleRecordingComplete = React.useCallback((base64: string, mimeType: string, url: string) => {
     updateCurrentPartState({ base64, mimeType, audioUrl: url });
     assessMutation.mutate({ base64, mimeType });
-  };
+  }, [updateCurrentPartState, assessMutation]);
 
   const getScoreColor = (score: number) => {
     if (score >= 7.5) return 'border-vibrant-emerald bg-vibrant-emerald/5 text-vibrant-emerald';
@@ -228,7 +242,7 @@ export default function SpeakingPage() {
         </section>
 
         <div className="flex flex-wrap items-center gap-4">
-          {Object.values(partStates).some(s => s.audioUrl || s.result) && (
+          {Object.values(partStates).some(s => s.audioUrl || s.result) ? (
             <button
               onClick={() => {
                 if (confirm('Clear all unsaved practice data for all parts?')) {
@@ -240,7 +254,7 @@ export default function SpeakingPage() {
               <X size={18} />
               Reset All
             </button>
-          )}
+          ) : null}
 
           <button
             onClick={() => setIsGuideOpen(true)}
@@ -252,9 +266,8 @@ export default function SpeakingPage() {
         </div>
       </header>
 
-      {/* Guide Modal */}
       <AnimatePresence>
-        {isGuideOpen && (
+        {isGuideOpen ? (
           <>
             <motion.div
               initial={{ opacity: 0 }}
@@ -315,7 +328,7 @@ export default function SpeakingPage() {
               </div>
             </motion.div>
           </>
-        )}
+        ) : null}
       </AnimatePresence>
 
       <div className="grid gap-10 lg:grid-cols-[24rem_minmax(0,1fr)] xl:grid-cols-[28rem_minmax(0,1fr)]">
@@ -373,12 +386,20 @@ export default function SpeakingPage() {
               <Mic size={16} className="text-vibrant-rose" />
               Live Input
             </div>
-            <AudioRecorder
-              onRecordingComplete={handleRecordingComplete}
-              onClear={clearAudio}
-              audioUrl={audioUrl}
-              isProcessing={assessMutation.isPending}
-            />
+            <React.Suspense fallback={
+              <div className="flex h-32 items-center justify-center rounded-[1.7rem] border border-zinc-200 bg-studio-paper/20">
+                <Loader2 size={24} className="animate-spin text-zinc-300" />
+              </div>
+            }>
+              <AudioRecorder
+                onRecordingComplete={handleRecordingComplete}
+                onClear={clearAudio}
+                audioUrl={audioUrl}
+                isProcessing={assessMutation.isPending}
+              />
+            </React.Suspense>
+
+
           </div>
 
           {assessMutation.isError && (
@@ -410,7 +431,7 @@ export default function SpeakingPage() {
                 transition={{ duration: 0.24, ease: 'easeOut' }}
                 className="space-y-6"
               >
-                {result.suggestedQuestion && (
+                {result.suggestedQuestion ? (
                   <div className="group relative overflow-hidden rounded-[3rem] border-2 border-vibrant-gold/20 bg-vibrant-gold/5 p-8 backdrop-blur-sm transition-all hover:bg-vibrant-gold/10">
                     <button
                       type="button"
@@ -425,26 +446,26 @@ export default function SpeakingPage() {
                         <Sparkles size={14} />
                         Suggested Question
                       </div>
-                      <p className="max-w-3xl text-2xl font-black leading-[2.5rem] tracking-tight text-studio-ink">
+                      <p className="max-w-3xl text-xl font-bold leading-relaxed tracking-tight text-studio-ink">
                         {result.suggestedQuestion}
                       </p>
                     </div>
                   </div>
-                )}
+                ) : null}
 
-                <div className="rounded-[3rem] border border-studio-silver bg-white p-10 shadow-xl shadow-black/5">
-                  <div className="grid gap-10 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
-                    <div className="space-y-5">
-                      <div className="space-y-3">
-                        <p className="text-[12px] font-black uppercase tracking-[0.3em] text-zinc-400">Overall Band Score</p>
-                        <div className="flex items-end gap-3 text-studio-ink">
-                          <span className="text-8xl font-black leading-none tracking-tighter">
+                <div className="rounded-[2.5rem] border border-studio-silver bg-white p-8 shadow-xl shadow-black/5">
+                  <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
+                    <div className="space-y-4">
+                      <div className="space-y-2">
+                        <p className="text-[10px] font-black uppercase tracking-[0.4em] text-zinc-400">Overall Band Score</p>
+                        <div className="flex items-end gap-2.5 text-studio-ink">
+                          <span className="text-7xl font-black leading-none tracking-tighter">
                             {result.overallBand.toFixed(1)}
                           </span>
-                          <span className="pb-4 text-3xl font-black text-zinc-200">/ 9.0</span>
+                          <span className="pb-2 text-2xl font-black text-zinc-200">/ 9.0</span>
                         </div>
                       </div>
-                      <p className="max-w-xl text-lg font-medium leading-relaxed text-zinc-500">
+                      <p className="max-w-xl text-base font-medium leading-relaxed text-zinc-500">
                         Detailed analysis based on your fluency, vocabulary, grammar, and pronunciation.
                       </p>
                     </div>
@@ -452,17 +473,16 @@ export default function SpeakingPage() {
                       type="button"
                       onClick={() => saveMutation.mutate()}
                       disabled={saveMutation.isPending || saveMutation.isSuccess}
-                      className={`group relative inline-flex h-20 w-56 items-center justify-center overflow-hidden rounded-3xl text-lg font-black transition-all hover:scale-105 active:scale-95 ${
+                      className={`group relative inline-flex h-16 w-48 items-center justify-center overflow-hidden rounded-2xl text-base font-black transition-all hover:scale-105 active:scale-95 ${
                         saveMutation.isSuccess 
                           ? 'bg-vibrant-gold text-white shadow-vibrant-gold/30' 
-                          : 'bg-vibrant-rose text-white shadow-xl shadow-vibrant-rose/30'
+                          : 'bg-vibrant-rose text-white shadow-lg shadow-vibrant-rose/30'
                       }`}
                     >
-                      <span className="relative z-10 flex items-center gap-3">
-                        {saveMutation.isSuccess ? <CheckCircle2 size={24} /> : <Save size={24} />}
+                      <span className="relative z-10 flex items-center gap-2.5">
+                        {saveMutation.isSuccess ? <CheckCircle2 size={20} /> : <Save size={20} />}
                         {saveMutation.isPending ? 'SAVING...' : saveMutation.isSuccess ? 'SAVED' : 'SAVE SCORE'}
                       </span>
-                      <div className="absolute inset-x-0 bottom-0 h-1.5 bg-black/10" />
                     </button>
                   </div>
                 </div>
@@ -472,47 +492,51 @@ export default function SpeakingPage() {
                     <Languages size={18} className="text-vibrant-emerald" />
                     Transcription
                   </div>
-                  <div className="rounded-[2.5rem] bg-studio-paper p-10 text-xl font-bold leading-[2.6rem] tracking-tight text-studio-ink shadow-inner">
+                  <div className="rounded-[2.5rem] bg-studio-paper p-10 text-lg font-medium leading-relaxed tracking-tight text-studio-ink shadow-inner">
                     {result.transcription}
                   </div>
                 </div>
 
                 <div className="grid grid-cols-1 gap-8 md:grid-cols-12 items-start">
                   {Object.entries(result.criteria).map(([key, data]) => (
-                    <div key={key} className="md:col-span-12 rounded-[3.5rem] border border-studio-silver bg-white p-10 shadow-xl transition-all hover:shadow-2xl">
-                      <div className="mb-8 flex items-start justify-between gap-6">
-                        <div className="flex items-center gap-5">
-                          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-studio-paper text-vibrant-emerald shadow-inner">
-                            <CheckCircle2 size={28} />
+                    <div key={key} className="md:col-span-12 rounded-[2.5rem] border border-studio-silver bg-white p-8 shadow-xl transition-all hover:shadow-2xl">
+                      <div className="mb-6 flex items-start justify-between gap-6">
+                        <div className="flex items-center gap-4">
+                          <div className={`flex h-12 w-12 items-center justify-center rounded-xl shadow-inner transition-colors duration-500 ${
+                            data.score >= 7 ? 'bg-vibrant-emerald/10 text-vibrant-emerald' : 
+                            data.score >= 5 ? 'bg-vibrant-gold/10 text-vibrant-gold' : 
+                            'bg-vibrant-rose/10 text-vibrant-rose'
+                          }`}>
+                            <CheckCircle2 size={24} />
                           </div>
                           <div className="space-y-1">
-                            <p className="text-[11px] font-black uppercase tracking-[0.25em] text-zinc-400">Criterion</p>
-                            <h3 className="text-2xl font-extrabold tracking-tight text-studio-ink">
+                            <p className="text-[9px] font-black uppercase tracking-[0.4em] text-zinc-400">Criterion</p>
+                            <h3 className="text-xl font-extrabold tracking-tight text-studio-ink">
                               {CRITERIA_LABELS[key] || key}
                             </h3>
                           </div>
                         </div>
-                        <span className={`rounded-2xl border-2 px-5 py-3 text-3xl font-black shadow-lg ${getScoreColor(data.score)}`}>
+                        <span className={`rounded-xl border-2 px-4 py-2 text-2xl font-black shadow-lg ${getScoreColor(data.score)}`}>
                           {data.score.toFixed(1)}
                         </span>
                       </div>
 
-                      <div className="space-y-10">
-                        <div className="px-2">
-                          <p className="text-xl font-bold leading-[2.5rem] tracking-tight text-zinc-700 whitespace-pre-line">
+                      <div className="space-y-8">
+                        <div className="px-1">
+                          <p className="text-base font-medium leading-relaxed tracking-tight text-zinc-700 whitespace-pre-line">
                             {formatProceduralText(data.feedback)}
                           </p>
                         </div>
-                        <div className="relative rounded-[3rem] border border-studio-silver bg-studio-paper/40 p-10 pb-16">
-                          <div className="mb-6 flex items-center gap-3 text-[12px] font-black uppercase tracking-[0.25em] text-vibrant-emerald">
-                            <TrendingUp size={20} />
+                        <div className="relative rounded-[2rem] border border-studio-silver bg-studio-paper/40 p-8 pb-14">
+                          <div className="mb-4 flex items-center gap-3 text-[11px] font-black uppercase tracking-[0.25em] text-vibrant-emerald">
+                            <TrendingUp size={18} />
                             Improvement
                           </div>
-                          <p className="text-xl font-bold leading-[2.5rem] tracking-tight text-studio-ink whitespace-pre-line">
+                          <p className="text-base font-medium leading-relaxed tracking-tight text-studio-ink whitespace-pre-line">
                             {formatProceduralText(data.improvement)}
                           </p>
                           {extractSource(data.improvement) && (
-                            <div className="absolute bottom-6 left-10 flex items-center gap-1.5 text-[10px] font-bold tracking-widest text-zinc-400">
+                            <div className="absolute bottom-5 left-8 flex items-center gap-1.5 text-[10px] font-bold tracking-widest text-zinc-400">
                               <span className="opacity-50 text-[9px]">SOURCE //</span>
                               <span>{extractSource(data.improvement).toUpperCase()}</span>
                             </div>
@@ -521,9 +545,11 @@ export default function SpeakingPage() {
                       </div>
                     </div>
                   ))}
+
+
                 </div>
 
-                {result.sampleResponse && (
+                {result.sampleResponse ? (
                   <div className="rounded-[4rem] border border-studio-silver bg-white p-12 shadow-2xl">
                     <div className="mb-10 flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
                       <div className="space-y-2">
@@ -536,41 +562,64 @@ export default function SpeakingPage() {
 
                     <div className="space-y-10">
                       <div className="rounded-[3rem] bg-studio-paper p-12 shadow-inner border border-studio-silver">
-                        <p className="text-2xl font-bold leading-[3.2rem] tracking-tight text-studio-ink/90 italic">
+                        <p className="text-xl font-medium leading-relaxed tracking-tight text-studio-ink/90 italic">
                           "{result.sampleResponse.text}"
                         </p>
+
                       </div>
 
-                      <div className="overflow-hidden rounded-[3rem] border border-studio-silver bg-white">
-                        <div className="border-b border-studio-silver bg-studio-paper px-8 py-6">
-                          <h4 className="text-[12px] font-black uppercase tracking-[0.25em] text-studio-ink">
+                      <div className="overflow-hidden rounded-[2.4rem] border border-studio-silver bg-white shadow-[0_16px_34px_rgba(15,23,42,0.04)]">
+                        <div className="border-b border-studio-silver bg-studio-paper/85 px-6 py-5 sm:px-7">
+                          <h4 className="text-[12px] font-black uppercase tracking-[0.22em] text-studio-ink">
                             High-Yield Vocabulary
                           </h4>
                         </div>
-                        <div className="overflow-x-auto px-8 py-4">
-                          <table className="w-full min-w-[34rem]">
+                        <div className="overflow-x-auto px-4 py-3 sm:px-6">
+                          <table className="w-full min-w-[30rem] table-fixed">
+                            <colgroup>
+                              <col className="w-[32%]" />
+                              <col className="w-[30%]" />
+                              <col className="w-[38%]" />
+                            </colgroup>
                             <thead>
-                              <tr className="border-b border-studio-silver text-left text-[11px] font-black uppercase tracking-widest text-zinc-400">
-                                <th className="pb-4 pt-2 px-4">Vocabulary</th>
-                                <th className="pb-4 pt-2 px-4">Articulation</th>
-                                <th className="pb-4 pt-2 px-4">Semantic Meaning</th>
+                              <tr className="border-b border-studio-silver text-left text-[12px] font-bold tracking-[0.04em] text-zinc-600">
+                                <th className="px-4 pb-4 pt-2">Vocabulary Term</th>
+                                <th className="px-4 pb-4 pt-2">Pronunciation (IPA)</th>
+                                <th className="px-4 pb-4 pt-2">Meaning in Vietnamese</th>
                               </tr>
                             </thead>
                             <tbody>
                               {result.sampleResponse.vocabulary.map((item, index) => (
-                                <tr key={`${item.word}-${index}`} className="group hover:bg-studio-paper transition-colors">
-                                  <td className="py-5 px-4 text-xl font-black text-vibrant-emerald tracking-tight">{item.word}</td>
-                                  <td className="py-5 px-4 font-mono text-sm text-vibrant-rose font-bold">{item.ipa}</td>
-                                  <td className="py-5 px-4 text-base font-bold text-studio-ink">{item.vietnamese}</td>
+                                <tr
+                                  key={`${item.word}-${index}`}
+                                  className="group border-b border-studio-paper/80 transition-colors duration-200 last:border-b-0 hover:bg-studio-paper/70"
+                                >
+                                  <td className="px-4 py-4 align-top sm:py-5">
+                                    <span className="inline-block text-[1.05rem] font-bold leading-7 tracking-[-0.025em] text-vibrant-emerald transition-colors duration-200 group-hover:text-studio-ink sm:text-[1.15rem]">
+                                      {item.word}
+                                    </span>
+                                  </td>
+                                  <td className="px-4 py-4 align-top sm:py-5">
+                                    <span className="inline-block max-w-full whitespace-normal break-words rounded-2xl border border-vibrant-rose/15 bg-vibrant-rose/[0.07] px-3 py-2 font-mono text-[13px] font-medium leading-5 text-vibrant-rose/80">
+                                      {item.ipa}
+                                    </span>
+                                  </td>
+                                  <td className="px-4 py-4 align-top sm:py-5">
+                                    <span className="text-[15px] font-semibold leading-6 text-studio-ink/85 sm:text-base">
+                                      {item.vietnamese}
+                                    </span>
+                                  </td>
                                 </tr>
                               ))}
                             </tbody>
+
+
                           </table>
                         </div>
                       </div>
                     </div>
                   </div>
-                )}
+                ) : null}
               </motion.div>
             ) : (
               <motion.div

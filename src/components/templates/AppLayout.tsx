@@ -1,7 +1,14 @@
 import React from 'react';
 import { NavLink, Outlet } from 'react-router-dom';
 import { motion } from 'motion/react';
-import { History, LayoutDashboard, LogOut, Mic, Settings, Trophy } from 'lucide-react';
+import History from 'lucide-react/dist/esm/icons/history';
+import LayoutDashboard from 'lucide-react/dist/esm/icons/layout-dashboard';
+import LogOut from 'lucide-react/dist/esm/icons/log-out';
+import Mic from 'lucide-react/dist/esm/icons/mic';
+import Settings from 'lucide-react/dist/esm/icons/settings';
+import Trophy from 'lucide-react/dist/esm/icons/trophy';
+
+
 import { useAuth } from '@/store/AuthContext';
 import { usePractice } from '@/store/PracticeContext';
 
