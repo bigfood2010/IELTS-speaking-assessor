@@ -40,45 +40,52 @@ export default function HistoryPage() {
 
   const vnRegex = /[àáảãạăằắẳẵặâầấẩẫậèéẻẽẹêềếểễệìíỉĩịòóỏõọôồốổỗộơờớởỡợùúủũụưừứửữựỳýỷỹỵđ]/i;
 
-function formatProceduralText(text: string) {
-  if (!text) return text;
+  function formatProceduralText(text: string) {
+    if (!text) return text;
 
-  let cleaned = text.replace(/[✦➤▪•◈▷➢]/g, '').replace(/\s*=\s*/g, '\n');
+    let cleaned = text.replace(/\(?https?:\/\/[^\s\)]+\)?/gi, '');
+    cleaned = cleaned.replace(/[✦➤▪•◈▷➢]/g, '').replace(/\s*=\s*/g, '\n');
+    cleaned = cleaned.replace(/\b(Source|Resource|Nguồn|Nguồn tham khảo):\s*[^/\n\(\)]*/gi, '');
+    cleaned = cleaned.replace(/^\s*\/\s*/gm, '');
 
-  cleaned = cleaned.replace(/\bSource:\s*.*$/gi, '');
-
-  const sections = cleaned.split('\n').map(s => s.trim()).filter(Boolean);
-
+    const strings = cleaned.split(/[\n/]/).map(s => s.trim()).filter(Boolean);
     let finalLines: string[] = [];
-    
-    sections.forEach(section => {
-      if (section.length > 50 && vnRegex.test(section)) {
-        const sentences = section.split('. ');
-        let currentPart = "";
-        
-        sentences.forEach((sentence, idx) => {
-          const isFirstVN = vnRegex.test(sentence) && !vnRegex.test(currentPart);
-          const cleanSentence = sentence.trim() + (idx < sentences.length - 1 ? '.' : '');
-          
-          if (isFirstVN && currentPart.length > 0) {
-            finalLines.push(currentPart.trim());
-            currentPart = cleanSentence;
-          } else {
-            currentPart += (currentPart ? ' ' : '') + cleanSentence;
+
+    strings.forEach(str => {
+      const sentences = str.split(/([.!?])\s*/).filter(Boolean);
+      let currentLine = "";
+      
+      for (let i = 0; i < sentences.length; i++) {
+          const part = sentences[i];
+          if (part === '.' || part === '!' || part === '?') {
+              currentLine += part;
+              continue;
           }
-        });
-        if (currentPart) finalLines.push(currentPart.trim());
-      } else {
-        finalLines.push(section);
+          
+          const isPartVN = vnRegex.test(part);
+          const isCurrentVN = currentLine ? vnRegex.test(currentLine) : isPartVN;
+          
+          if (currentLine && isPartVN !== isCurrentVN) {
+              finalLines.push(currentLine.trim());
+              currentLine = part;
+          } else {
+              currentLine += (currentLine && !/[.!?]$/.test(currentLine) ? ' ' : '') + part;
+          }
       }
+      if (currentLine) finalLines.push(currentLine.trim());
     });
 
-    return finalLines.join('\n');
+    return finalLines.join('\n').replace(/\n{3,}/g, '\n\n');
   }
 
   function extractSource(text: string): string | null {
-    const match = text.match(/\bSource:\s*(.*)$/i);
-    return match ? match[1].trim() : null;
+    const match = text.match(/\b(Source|Resource):\s*([^/\n\.\(]+)/i);
+    if (!match) return null;
+    
+    let source = match[2].trim();
+    source = source.split(/\s(for|to|on|about)\s/i)[0];
+    
+    return source.trim() || null;
   }
 
   const formatDate = (dateString: string) => {
