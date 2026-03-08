@@ -1,6 +1,11 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
-import { Download, Loader2, Mic, Square, Trash2, Upload } from 'lucide-react';
+import Download from 'lucide-react/dist/esm/icons/download';
+import Loader2 from 'lucide-react/dist/esm/icons/loader-2';
+import Mic from 'lucide-react/dist/esm/icons/mic';
+import Square from 'lucide-react/dist/esm/icons/square';
+import Trash2 from 'lucide-react/dist/esm/icons/trash-2';
+import Upload from 'lucide-react/dist/esm/icons/upload';
 
 interface AudioRecorderProps {
   onRecordingComplete: (base64: string, mimeType: string, url: string) => void;
@@ -9,7 +14,7 @@ interface AudioRecorderProps {
   isProcessing: boolean;
 }
 
-export const AudioRecorder: React.FC<AudioRecorderProps> = ({
+export const AudioRecorder = React.memo<AudioRecorderProps>(({
   onRecordingComplete,
   onClear,
   audioUrl,
@@ -22,8 +27,6 @@ export const AudioRecorder: React.FC<AudioRecorderProps> = ({
   const timerRef = useRef<number | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-
-
   useEffect(() => {
     return () => {
       if (timerRef.current) {
@@ -32,9 +35,7 @@ export const AudioRecorder: React.FC<AudioRecorderProps> = ({
     };
   }, []);
 
-
-
-  const startRecording = async () => {
+  const startRecording = React.useCallback(async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       const mediaRecorder = new MediaRecorder(stream);
@@ -70,9 +71,9 @@ export const AudioRecorder: React.FC<AudioRecorderProps> = ({
       console.error('Error accessing microphone:', error);
       window.alert('Could not access the microphone. Please check browser permissions.');
     }
-  };
+  }, [onRecordingComplete]);
 
-  const stopRecording = () => {
+  const stopRecording = React.useCallback(() => {
     if (!mediaRecorderRef.current || !isRecording) {
       return;
     }
@@ -85,9 +86,9 @@ export const AudioRecorder: React.FC<AudioRecorderProps> = ({
       window.clearInterval(timerRef.current);
       timerRef.current = null;
     }
-  };
+  }, [isRecording]);
 
-  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload = React.useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
 
     if (!file) {
@@ -108,9 +109,9 @@ export const AudioRecorder: React.FC<AudioRecorderProps> = ({
       const base64 = base64data.split(',')[1];
       onRecordingComplete(base64, file.type, url);
     };
-  };
+  }, [onRecordingComplete]);
 
-  const downloadAudio = () => {
+  const downloadAudio = React.useCallback(() => {
     if (!audioUrl) {
       return;
     }
@@ -119,15 +120,15 @@ export const AudioRecorder: React.FC<AudioRecorderProps> = ({
     anchor.href = audioUrl;
     anchor.download = `ielts-speaking-response-${Date.now()}.webm`;
     anchor.click();
-  };
+  }, [audioUrl]);
 
-  const clearAudio = () => {
+  const clearAudio = React.useCallback(() => {
     onClear();
     setDuration(0);
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
-  };
+  }, [onClear]);
 
   const formatTime = (seconds: number) => {
     const minutes = Math.floor(seconds / 60);
@@ -146,12 +147,12 @@ export const AudioRecorder: React.FC<AudioRecorderProps> = ({
         </div>
 
         {isRecording ? (
-          <span className="inline-flex items-center gap-2 rounded-full border border-heritage-red/10 bg-heritage-red/5 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.24em] text-heritage-red shadow-sm animate-pulse">
-            <span className="h-2 w-2 rounded-full bg-heritage-red" />
+          <span className="inline-flex items-center gap-2 rounded-full border border-vibrant-rose/10 bg-vibrant-rose/5 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.24em] text-vibrant-rose shadow-sm animate-pulse">
+            <span className="h-2 w-2 rounded-full bg-vibrant-rose" />
             Recording
           </span>
         ) : audioUrl ? (
-          <span className="inline-flex items-center rounded-full bg-heritage-sage/20 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.22em] text-heritage-forest">
+          <span className="inline-flex items-center rounded-full bg-vibrant-gold/20 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.22em] text-vibrant-emerald">
             Ready
           </span>
         ) : null}
@@ -165,7 +166,7 @@ export const AudioRecorder: React.FC<AudioRecorderProps> = ({
             type="button"
             onClick={startRecording}
             disabled={isProcessing}
-            className="inline-flex items-center justify-center gap-2.5 rounded-2xl bg-luxe-espresso px-4 py-2.5 text-left text-white shadow-[0_12px_24px_rgba(45,91,255,0.12)] ring-1 ring-white/10 transition-colors hover:bg-zinc-900 disabled:cursor-not-allowed disabled:opacity-50"
+            className="inline-flex items-center justify-center gap-2.5 rounded-2xl bg-studio-ink px-4 py-2.5 text-left text-white shadow-[0_12px_24px_rgba(45,91,255,0.12)] ring-1 ring-white/10 transition-colors hover:bg-zinc-900 disabled:cursor-not-allowed disabled:opacity-50"
           >
             <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white/10">
               <Mic size={16} />
@@ -201,7 +202,7 @@ export const AudioRecorder: React.FC<AudioRecorderProps> = ({
         <motion.div
           initial={{ opacity: 0, scale: 0.98 }}
           animate={{ opacity: 1, scale: 1 }}
-          className="rounded-[1.6rem] bg-luxe-espresso px-5 py-5 text-white shadow-[0_18px_34px_rgba(45,91,255,0.15)] ring-1 ring-white/10"
+          className="rounded-[1.6rem] bg-studio-ink px-5 py-5 text-white shadow-[0_18px_34px_rgba(45,91,255,0.15)] ring-1 ring-white/10"
         >
           <div className="flex flex-col gap-5">
             <div className="space-y-2">
@@ -280,4 +281,4 @@ export const AudioRecorder: React.FC<AudioRecorderProps> = ({
       </AnimatePresence>
     </div>
   );
-};
+});

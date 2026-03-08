@@ -48,6 +48,7 @@ docs/
 
 # Task-specific or agent-generated
 .agent/
+.agents/
 .gemini/
 metadata.json
 

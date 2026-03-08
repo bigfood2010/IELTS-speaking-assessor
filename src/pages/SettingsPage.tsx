@@ -1,5 +1,14 @@
 import React, { useEffect, useState } from 'react';
-import { Check, ShieldCheck, Trash2, Key, UserRound, LogOut, Save, CheckCircle2 } from 'lucide-react';
+import Check from 'lucide-react/dist/esm/icons/check';
+import ShieldCheck from 'lucide-react/dist/esm/icons/shield-check';
+import Trash2 from 'lucide-react/dist/esm/icons/trash-2';
+import Key from 'lucide-react/dist/esm/icons/key';
+import UserRound from 'lucide-react/dist/esm/icons/user-round';
+import LogOut from 'lucide-react/dist/esm/icons/log-out';
+import Save from 'lucide-react/dist/esm/icons/save';
+import CheckCircle2 from 'lucide-react/dist/esm/icons/check-circle-2';
+
+
 import { useGeminiKey } from '@/hooks/useGeminiKey';
 import { useAuth } from '@/store/AuthContext';
 
@@ -48,7 +57,6 @@ export default function SettingsPage() {
       </header>
 
       <div className="grid gap-8 lg:grid-cols-2">
-        {/* Profile Card */}
         <div className="rounded-[3rem] border border-studio-silver bg-white p-10 shadow-xl shadow-black/5">
           <div className="flex items-center gap-4 border-b border-studio-silver pb-6 mb-8">
             <div className="rounded-2xl bg-studio-paper p-3 text-studio-ink shadow-inner">
@@ -87,7 +95,6 @@ export default function SettingsPage() {
           </div>
         </div>
 
-        {/* API Key Card */}
         <div className="rounded-[3rem] border border-studio-silver bg-white p-10 shadow-xl shadow-black/5">
           <div className="flex items-center gap-4 border-b border-studio-silver pb-6 mb-8">
             <div className="rounded-2xl bg-vibrant-gold/10 p-3 text-vibrant-gold shadow-inner">
@@ -96,12 +103,12 @@ export default function SettingsPage() {
             <div className="flex-1">
               <div className="flex items-center justify-between">
                 <h2 className="text-xl font-black tracking-tight text-studio-ink leading-tight">Gemini API Key</h2>
-                {!isEditing && apiKey && (
+                {!isEditing && apiKey ? (
                    <span className="inline-flex items-center gap-2 rounded-full bg-vibrant-emerald px-4 py-1.5 text-[11px] font-black uppercase tracking-widest text-white shadow-lg shadow-vibrant-emerald/20">
                      <span className="w-2 h-2 rounded-full bg-white animate-pulse"></span>
                      ACTIVE
                    </span>
-                )}
+                ) : null}
               </div>
             </div>
           </div>
@@ -165,7 +172,7 @@ export default function SettingsPage() {
               </div>
 
               <div className="flex items-center justify-end gap-4 pt-6 mt-4 border-t border-studio-silver">
-                {apiKey && (
+                {apiKey ? (
                   <button
                     onClick={() => {
                       setIsEditing(false);
@@ -175,7 +182,7 @@ export default function SettingsPage() {
                   >
                     ABORT
                   </button>
-                )}
+                ) : null}
                 <button
                   onClick={handleSave}
                   disabled={!inputValue.trim() || isSaved}

@@ -1,4 +1,8 @@
-import { History, Loader2, Mic, Sparkles, Trophy } from 'lucide-react';
+import History from 'lucide-react/dist/esm/icons/history';
+import Loader2 from 'lucide-react/dist/esm/icons/loader-2';
+import Mic from 'lucide-react/dist/esm/icons/mic';
+import Sparkles from 'lucide-react/dist/esm/icons/sparkles';
+import Trophy from 'lucide-react/dist/esm/icons/trophy';
 import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '@/store/AuthContext';
