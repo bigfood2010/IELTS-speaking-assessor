@@ -54,3 +54,9 @@ metadata.json
 
 # database
 database.sql
+
+# context-layer
+context-layer/
+
+# script
+script.sh
