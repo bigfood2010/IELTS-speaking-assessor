@@ -1,6 +1,8 @@
 const DEFAULT_AUTH_REDIRECT_PATH = '/app/dashboard';
 
-export function getSafeAuthRedirectPath(next: string | null | undefined): string {
+export function getSafeAuthRedirectPath(
+  next: string | null | undefined,
+): string {
   if (!next || !next.startsWith('/') || next.startsWith('//')) {
     return DEFAULT_AUTH_REDIRECT_PATH;
   }
