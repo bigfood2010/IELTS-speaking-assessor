@@ -3,7 +3,6 @@ import { NavLink, Outlet } from 'react-router-dom';
 import { motion } from 'motion/react';
 import History from 'lucide-react/dist/esm/icons/history';
 import LayoutDashboard from 'lucide-react/dist/esm/icons/layout-dashboard';
-import LogOut from 'lucide-react/dist/esm/icons/log-out';
 import Mic from 'lucide-react/dist/esm/icons/mic';
 import Settings from 'lucide-react/dist/esm/icons/settings';
 import Trophy from 'lucide-react/dist/esm/icons/trophy';
@@ -87,32 +86,25 @@ export default function AppLayout() {
           ))}
         </nav>
 
-        <div className="space-y-3 border-t border-studio-silver p-4">
+        <div className="border-t border-studio-silver px-5 py-4">
           {user && (
-            <div className="rounded-2xl border border-studio-silver bg-studio-paper/50 p-4">
-              <div className="flex items-center gap-3">
-                {user.user_metadata?.avatar_url ? (
-                  <img src={user.user_metadata.avatar_url} alt="Avatar" className="w-10 h-10 rounded-full border-2 border-white shadow-sm object-cover" />
-                ) : (
-                  <div className="w-10 h-10 rounded-full border-2 border-white bg-vibrant-emerald flex items-center justify-center uppercase font-bold text-white shadow-sm">
-                    {user.email?.[0]}
-                  </div>
-                )}
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-bold text-studio-ink">
-                    {user.user_metadata?.full_name || user.email?.split('@')[0]}
-                  </p>
-                  <p className="truncate text-xs font-medium text-zinc-500">{user.email}</p>
+            <div className="flex items-center gap-3">
+              {user.user_metadata?.avatar_url ? (
+                <img src={user.user_metadata.avatar_url} alt="Avatar" className="w-10 h-10 rounded-full object-cover" />
+              ) : (
+                <div className="w-10 h-10 rounded-full bg-vibrant-emerald flex items-center justify-center uppercase font-bold text-white text-sm">
+                  {user.email?.[0]}
                 </div>
-              </div>
-
-              <div className="mt-4 flex items-center justify-end">
+              )}
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-semibold text-studio-ink">
+                  {user.user_metadata?.full_name || user.email?.split('@')[0]}
+                </p>
                 <button
                   onClick={signOut}
-                  className="inline-flex items-center gap-1.5 rounded-lg px-2 py-1 text-xs font-bold text-zinc-400 transition-colors hover:text-vibrant-rose"
+                  className="text-xs text-zinc-400 hover:text-vibrant-rose transition-colors"
                 >
-                  <LogOut size={14} />
-                  Sign Out
+                  Sign out
                 </button>
               </div>
             </div>
