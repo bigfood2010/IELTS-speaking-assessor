@@ -12,11 +12,18 @@ import Trophy from 'lucide-react/dist/esm/icons/trophy';
 import { useAuth } from '@/store/AuthContext';
 import { usePractice } from '@/store/PracticeContext';
 
+interface NavItem {
+  name: string;
+  path: string;
+  icon: React.ReactNode;
+  hasBadge?: boolean;
+}
+
 export default function AppLayout() {
   const { user, signOut } = useAuth();
   const { hasActiveResults } = usePractice();
   
-  const navItems = [
+  const navItems: NavItem[] = [
     { name: 'Dashboard', path: '/app/dashboard', icon: <LayoutDashboard size={20} /> },
     { 
       name: 'Practice', 
@@ -60,7 +67,7 @@ export default function AppLayout() {
                 <>
                   <span className={`relative shrink-0 transition-colors ${isActive ? 'text-vibrant-rose' : 'group-hover:text-studio-ink'}`}>
                     {item.icon}
-                    {(item as any).hasBadge && (
+{item.hasBadge && (
                       <span className="absolute -right-1 -top-1 flex h-3 w-3">
                         <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-vibrant-emerald opacity-75"></span>
                         <span className="relative inline-flex h-3 w-3 rounded-full bg-vibrant-emerald ring-2 ring-white"></span>
@@ -132,7 +139,7 @@ export default function AppLayout() {
           >
             <div className="relative">
               {item.icon}
-              {(item as any).hasBadge && (
+              {item.hasBadge && (
                 <span className="absolute -right-1.5 -top-1.5 flex h-2.5 w-2.5">
                   <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-vibrant-emerald opacity-75"></span>
                   <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-vibrant-emerald ring-2 ring-white"></span>

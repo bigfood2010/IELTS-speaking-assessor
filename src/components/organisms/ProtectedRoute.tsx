@@ -16,9 +16,6 @@ export default function ProtectedRoute({ children }: { children: React.ReactNode
   }
 
   if (!session) {
-    // If we're not logged in, redirect to login page (or dashboard root if login is integrated there)
-    // Note: We'll create a simple Login/Landing page later when the user is signed out.
-    // For now, redirecting to a /login route.
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 

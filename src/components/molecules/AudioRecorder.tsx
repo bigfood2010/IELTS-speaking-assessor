@@ -23,6 +23,7 @@ export const AudioRecorder = React.memo<AudioRecorderProps>(({
   const [isRecording, setIsRecording] = useState(false);
   const [duration, setDuration] = useState(0);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const mediaStreamRef = useRef<MediaStream | null>(null);
   const chunksRef = useRef<Blob[]>([]);
   const timerRef = useRef<number | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -32,12 +33,16 @@ export const AudioRecorder = React.memo<AudioRecorderProps>(({
       if (timerRef.current) {
         window.clearInterval(timerRef.current);
       }
+      if (mediaStreamRef.current) {
+        mediaStreamRef.current.getTracks().forEach((track) => track.stop());
+      }
     };
   }, []);
 
   const startRecording = React.useCallback(async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      mediaStreamRef.current = stream;
       const mediaRecorder = new MediaRecorder(stream);
       mediaRecorderRef.current = mediaRecorder;
       chunksRef.current = [];
@@ -137,22 +142,22 @@ export const AudioRecorder = React.memo<AudioRecorderProps>(({
   };
 
   return (
-    <div className="space-y-4 rounded-[1.7rem] border border-zinc-200 bg-[linear-gradient(180deg,rgba(250,250,250,0.96),rgba(244,244,245,0.92))] p-5 shadow-inner">
+    <div className="space-y-4 rounded-2xl border border-zinc-200 bg-[linear-gradient(180deg,rgba(250,250,250,0.96),rgba(244,244,245,0.92))] p-4 shadow-inner">
       <div className="flex items-start justify-between gap-4">
         <div className="space-y-1">
-          <p className="text-base font-semibold tracking-[-0.02em] text-zinc-950">Capture your response</p>
-          <p className="text-sm leading-6 text-zinc-500">
+          <p className="text-sm font-semibold text-zinc-950">Capture response</p>
+          <p className="text-xs leading-5 text-zinc-500">
             Record directly in the browser or upload an existing speaking answer.
           </p>
         </div>
 
         {isRecording ? (
-          <span className="inline-flex items-center gap-2 rounded-full border border-vibrant-rose/10 bg-vibrant-rose/5 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.24em] text-vibrant-rose shadow-sm animate-pulse">
+          <span className="inline-flex items-center gap-2 rounded-full border border-vibrant-rose/10 bg-vibrant-rose/5 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.18em] text-vibrant-rose shadow-sm animate-pulse">
             <span className="h-2 w-2 rounded-full bg-vibrant-rose" />
             Recording
           </span>
         ) : audioUrl ? (
-          <span className="inline-flex items-center rounded-full bg-vibrant-gold/20 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.22em] text-vibrant-emerald">
+          <span className="inline-flex items-center rounded-full bg-vibrant-gold/20 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.18em] text-vibrant-emerald">
             Ready
           </span>
         ) : null}
@@ -166,12 +171,12 @@ export const AudioRecorder = React.memo<AudioRecorderProps>(({
             type="button"
             onClick={startRecording}
             disabled={isProcessing}
-            className="inline-flex items-center justify-center gap-2.5 rounded-2xl bg-studio-ink px-4 py-2.5 text-left text-white shadow-[0_12px_24px_rgba(45,91,255,0.12)] ring-1 ring-white/10 transition-colors hover:bg-zinc-900 disabled:cursor-not-allowed disabled:opacity-50"
+            className="inline-flex items-center justify-center gap-2 rounded-xl bg-studio-ink px-3 py-2.5 text-left text-white shadow-[0_10px_20px_rgba(45,91,255,0.10)] ring-1 ring-white/10 transition-colors hover:bg-zinc-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-vibrant-emerald/40 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
           >
-            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white/10">
+            <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-white/10">
               <Mic size={16} />
             </span>
-            <span className="text-sm font-semibold">Record Audio</span>
+            <span className="text-sm font-semibold">Record</span>
           </motion.button>
 
           <motion.button
@@ -180,12 +185,12 @@ export const AudioRecorder = React.memo<AudioRecorderProps>(({
             type="button"
             onClick={() => fileInputRef.current?.click()}
             disabled={isProcessing}
-            className="inline-flex items-center justify-center gap-2.5 rounded-2xl border border-zinc-200 bg-white px-4 py-2.5 text-left text-zinc-900 shadow-sm transition-colors hover:border-zinc-300 hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-50"
+            className="inline-flex items-center justify-center gap-2 rounded-xl border border-zinc-200 bg-white px-3 py-2.5 text-left text-zinc-900 shadow-sm transition-colors hover:border-zinc-300 hover:bg-zinc-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-vibrant-emerald/40 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
           >
-            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-zinc-100">
+            <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-zinc-100">
               <Upload size={16} />
             </span>
-            <span className="text-sm font-semibold z-10">Upload Audio</span>
+            <span className="text-sm font-semibold z-10">Upload</span>
           </motion.button>
 
           <input
@@ -202,14 +207,14 @@ export const AudioRecorder = React.memo<AudioRecorderProps>(({
         <motion.div
           initial={{ opacity: 0, scale: 0.98 }}
           animate={{ opacity: 1, scale: 1 }}
-          className="rounded-[1.6rem] bg-studio-ink px-5 py-5 text-white shadow-[0_18px_34px_rgba(45,91,255,0.15)] ring-1 ring-white/10"
+          className="rounded-2xl bg-studio-ink px-4 py-4 text-white shadow-[0_14px_26px_rgba(45,91,255,0.12)] ring-1 ring-white/10"
         >
-          <div className="flex flex-col gap-5">
+          <div className="flex flex-col gap-4">
             <div className="space-y-2">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-white/60">Live capture</p>
+              <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-white/60">Live capture</p>
               <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-                <span className="text-4xl font-semibold leading-none tracking-[-0.06em]">{formatTime(duration)}</span>
-                <span className="text-sm text-white/65">Keep speaking naturally</span>
+                <span className="text-3xl font-semibold leading-none tabular-nums">{formatTime(duration)}</span>
+                <span className="text-xs text-white/65">Keep speaking naturally</span>
               </div>
             </div>
 
@@ -218,7 +223,7 @@ export const AudioRecorder = React.memo<AudioRecorderProps>(({
               whileTap={{ scale: 0.985 }}
               type="button"
               onClick={stopRecording}
-              className="inline-flex w-full items-center justify-center gap-3 rounded-full bg-white px-5 py-3 text-sm font-semibold text-zinc-950 transition-colors hover:bg-zinc-100 sm:w-auto"
+              className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-white px-4 py-2.5 text-sm font-semibold text-zinc-950 transition-colors hover:bg-zinc-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70 focus-visible:ring-offset-2 focus-visible:ring-offset-studio-ink sm:w-auto"
             >
               <Square size={16} fill="currentColor" />
               Stop recording
@@ -231,11 +236,11 @@ export const AudioRecorder = React.memo<AudioRecorderProps>(({
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="flex flex-col gap-4 rounded-[1.6rem] border border-zinc-200 bg-white p-5 shadow-sm"
+          className="flex flex-col gap-4 rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm"
         >
           <div className="flex flex-col gap-2">
             <p className="text-sm font-semibold text-zinc-950">Audio ready for assessment</p>
-            <p className="text-sm leading-6 text-zinc-500">
+            <p className="text-xs leading-5 text-zinc-500">
               Review the clip, then wait while Gemini analyzes your response.
             </p>
           </div>
@@ -246,7 +251,8 @@ export const AudioRecorder = React.memo<AudioRecorderProps>(({
               <button
                 type="button"
                 onClick={downloadAudio}
-                className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-zinc-200 bg-white text-zinc-500 shadow-sm transition-colors hover:border-zinc-300 hover:text-zinc-950"
+                aria-label="Download recording"
+                className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-zinc-200 bg-white text-zinc-500 shadow-sm transition-colors hover:border-zinc-300 hover:text-zinc-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-vibrant-emerald/40 focus-visible:ring-offset-2"
                 title="Download recording"
               >
                 <Download size={18} />
@@ -254,7 +260,8 @@ export const AudioRecorder = React.memo<AudioRecorderProps>(({
               <button
                 type="button"
                 onClick={clearAudio}
-                className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-zinc-200 bg-white text-zinc-500 shadow-sm transition-colors hover:border-red-200 hover:bg-red-50 hover:text-red-600"
+                aria-label="Clear recording"
+                className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-zinc-200 bg-white text-zinc-500 shadow-sm transition-colors hover:border-red-200 hover:bg-red-50 hover:text-red-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-300 focus-visible:ring-offset-2"
                 title="Clear recording"
               >
                 <Trash2 size={18} />
@@ -275,7 +282,7 @@ export const AudioRecorder = React.memo<AudioRecorderProps>(({
             className="inline-flex items-center gap-2 rounded-full border border-blue-200 bg-blue-50 px-4 py-2 text-sm font-medium text-blue-700"
           >
             <Loader2 size={16} className="animate-spin" />
-            Analyzing your response...
+            Analyzing your response…
           </motion.div>
         )}
       </AnimatePresence>

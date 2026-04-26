@@ -28,7 +28,7 @@ export default function LoginPage() {
         </div>
         <div className="space-y-4">
           <h1 className="text-4xl font-black tracking-tighter text-studio-ink">IELTS Studio</h1>
-          <p className="text-zinc-400 text-lg font-medium leading-relaxed px-4">Initialize your professional speaking workspace and track performance gains.</p>
+          <p className="text-zinc-400 text-base font-medium leading-relaxed px-4">Initialize your professional speaking workspace and track performance gains.</p>
         </div>
 
         {supabaseConfigError && (

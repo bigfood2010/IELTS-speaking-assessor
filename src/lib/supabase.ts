@@ -1,9 +1,12 @@
-import { createClient } from '@supabase/supabase-js';
-import { getSupabaseClientKey, getSupabaseConfigError } from './supabaseConfig';
+import { createClient } from "@supabase/supabase-js";
+import { getSupabaseClientKey, getSupabaseConfigError } from "./supabaseConfig";
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || "";
 const supabaseAnonKey = getSupabaseClientKey(import.meta.env);
-export const supabaseConfigError = getSupabaseConfigError(supabaseUrl, supabaseAnonKey);
+export const supabaseConfigError = getSupabaseConfigError(
+  supabaseUrl,
+  supabaseAnonKey,
+);
 
 if (supabaseConfigError) {
   console.warn(supabaseConfigError);
@@ -12,6 +15,6 @@ if (supabaseConfigError) {
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
     detectSessionInUrl: true,
-    flowType: 'implicit',
+    flowType: "implicit",
   },
 });

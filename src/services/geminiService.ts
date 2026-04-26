@@ -404,7 +404,15 @@ export async function assessSpeaking(
       });
     }
 
-    return JSON.parse(response.text) as AssessmentResult;
+    let assessmentResult: AssessmentResult;
+    try {
+      assessmentResult = JSON.parse(response.text) as AssessmentResult;
+    } catch (parseError) {
+      console.error('Failed to parse assessment result:', parseError);
+      throw new Error('Invalid assessment response format');
+    }
+
+    return assessmentResult;
   } catch (error) {
     console.error("Gemini Setup Error:", error);
     throw normalizeGeminiError(error);
